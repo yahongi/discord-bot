@@ -99,13 +99,13 @@ async def ranking(interaction: discord.Interaction):
 
 @bot.event
 async def on_ready():
+    print("URL:", SUPABASE_URL)
     guild = discord.Object(id=GUILD_ID)
     synced = await bot.tree.sync(guild=guild)
     print(f"{bot.user} でログインしました")
     print(f"同期したコマンド数: {len(synced)}")
     for cmd in synced:
         print(cmd.name)
-        print("URL:", SUPABASE_URL)
 
 @bot.event
 async def on_voice_state_update(member, before, after):

@@ -5,7 +5,6 @@ from threading import Thread
 import discord
 from discord.ext import commands
 from datetime import date, timedelta
-
 from supabase import create_client
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
@@ -30,14 +29,12 @@ def run_web():
     app.run(host="0.0.0.0", port=10000)
 
 def keep_alive():
-    t = Thread(target=run_web)
-    t.start()
+    Thread(target=run_web).start()
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 def update_vc(user_id):
     today = date.today()
-
     data = supabase.table("vc_count").select("*").eq("user_id", user_id).execute()
 
     if not data.data:
@@ -55,10 +52,7 @@ def update_vc(user_id):
     if last_date == today:
         return count
 
-    if last_date == today - timedelta(days=1):
-        count += 1
-    else:
-        count = 1
+    count = count + 1 if last_date == today - timedelta(days=1) else 1
 
     supabase.table("vc_count").update({
         "count": count,
@@ -67,45 +61,35 @@ def update_vc(user_id):
 
     return count
 
-@bot.tree.command(
-    name="出席簿",
-    description="ユーザーの連続出席日数を見る",
-    guild=discord.Object(id=GUILD_ID)
-)
-async def vccount(interaction: discord.Interaction, member: discord.Member):
-    res = supabase.table("vc_count").select("*").eq("user_id", member.id).execute()
-    count = res.data[0]["count"] if res.data else 0
-
-    await interaction.response.send_message(
-        f"{member.display_name} の連続出席日数は **{count}日** です"
+@bot.tree.command(name="出席簿", description="自分の連続出席日数を見る", guild=discord.Object(id=GUILD_ID))
+async def vccount(interaction: discord.Interaction):
+    await interaction.response.defer()
+    count = update_vc(interaction.user.id)
+    await interaction.followup.send(
+        f"{interaction.user.display_name} の連続出席日数は **{count}日** です"
     )
 
-@bot.tree.command(
-    name="出席ランキング",
-    description="連続出席日数ランキング（上位10人）",
-    guild=discord.Object(id=GUILD_ID)
-)
+@bot.tree.command(name="出席ランキング", description="連続出席日数ランキング（上位10人）", guild=discord.Object(id=GUILD_ID))
 async def ranking(interaction: discord.Interaction):
+    await interaction.response.defer()
     res = supabase.table("vc_count").select("*").order("count", desc=True).limit(10).execute()
 
     if not res.data:
-        await interaction.response.send_message("データがありません")
+        await interaction.followup.send("データがありません")
         return
 
     text = "🏆 連続出席日数ランキング（TOP10）\n\n"
-
     for i, row in enumerate(res.data, start=1):
         member = interaction.guild.get_member(row["user_id"])
         name = member.display_name if member else f"ID:{row['user_id']}"
         text += f"{i}位：{name} - {row['count']}日\n"
 
-    await interaction.response.send_message(text)
+    await interaction.followup.send(text)
 
 @bot.event
 async def on_ready():
     guild = discord.Object(id=GUILD_ID)
     synced = await bot.tree.sync(guild=guild)
-
     print(f"{bot.user} でログインしました")
     print(f"同期したコマンド数: {len(synced)}")
     for cmd in synced:
@@ -119,10 +103,7 @@ async def on_voice_state_update(member, before, after):
 
 @bot.event
 async def on_message(message):
-    if message.author.bot:
-        return
-
-    if message.guild is None:
+    if message.author.bot or message.guild is None:
         return
 
     update_vc(message.author.id)

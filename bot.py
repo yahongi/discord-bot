@@ -66,8 +66,11 @@ def update_vc(user_id):
     description="ユーザーの連続出席日数を見る",
     guild=discord.Object(id=GUILD_ID)
 )
-async def vccount(interaction: discord.Interaction, member: discord.Member):
+async def vccount(interaction: discord.Interaction, member: discord.Member = None):
     await interaction.response.defer()
+
+    if member is None:
+        member = interaction.user
 
     try:
         res = supabase.table("vc_count").select("*").eq("user_id", member.id).execute()
@@ -78,8 +81,8 @@ async def vccount(interaction: discord.Interaction, member: discord.Member):
         )
 
     except Exception as e:
-        print("ERROR:", e)
-        await interaction.followup.send("エラー出た（ログ見て）")
+        print("ERROR:", repr(e), flush=True)
+        await interaction.followup.send(f"エラー: `{repr(e)}`")
         
 @bot.tree.command(name="出席ランキング", description="連続出席日数ランキング（上位10人）", guild=discord.Object(id=GUILD_ID))
 async def ranking(interaction: discord.Interaction):
@@ -100,13 +103,16 @@ async def ranking(interaction: discord.Interaction):
 
 @bot.event
 async def on_ready():
-    print("URL:", SUPABASE_URL)
+    print("Bot ready", flush=True)
+    print("SUPABASE_URL:", repr(SUPABASE_URL), flush=True)
+
     guild = discord.Object(id=GUILD_ID)
     synced = await bot.tree.sync(guild=guild)
-    print(f"{bot.user} でログインしました")
-    print(f"同期したコマンド数: {len(synced)}")
+
+    print(f"{bot.user} でログインしました", flush=True)
+    print(f"同期したコマンド数: {len(synced)}", flush=True)
     for cmd in synced:
-        print(cmd.name)
+        print(cmd.name, flush=True)
 
 @bot.event
 async def on_voice_state_update(member, before, after):

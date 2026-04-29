@@ -4,11 +4,17 @@ from threading import Thread
 
 import discord
 from discord.ext import commands
-import sqlite3
 from datetime import datetime, timezone, timedelta
 
-TOKEN = os.environ["TOKEN"]
+from supabase import create_client
 
+# ===== Supabase設定 =====
+SUPABASE_URL = os.environ["SUPABASE_URL"]
+SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# ===== Discord設定 =====
+TOKEN = os.environ["TOKEN"]
 GUILD_ID = 1463536665632051213
 
 JST = timezone(timedelta(hours=9))
@@ -18,6 +24,7 @@ intents.voice_states = True
 intents.members = True
 intents.message_content = True
 
+# ===== Flask（keep alive）=====
 app = Flask(__name__)
 
 @app.route("/")
@@ -31,29 +38,22 @@ def keep_alive():
     t = Thread(target=run_web)
     t.start()
 
+# ===== Bot =====
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-db = sqlite3.connect("vc_count.db")
-cur = db.cursor()
-
-cur.execute("""
-CREATE TABLE IF NOT EXISTS vc_count (
-    user_id INTEGER PRIMARY KEY,
-    count INTEGER NOT NULL,
-    last_date TEXT
-)
-""")
-db.commit()
-
+# ===== コマンド =====
 @bot.tree.command(
     name="出席簿",
     description="ユーザーの連続VC日数を見る",
     guild=discord.Object(id=GUILD_ID)
 )
 async def vccount(interaction: discord.Interaction, member: discord.Member):
-    cur.execute("SELECT count FROM vc_count WHERE user_id = ?", (member.id,))
-    row = cur.fetchone()
-    count = row[0] if row else 0
+    res = supabase.table("vc_count").select("*").eq("user_id", member.id).execute()
+
+    if res.data:
+        count = res.data[0]["count"]
+    else:
+        count = 0
 
     await interaction.response.send_message(
         f"{member.display_name} の連続VC日数は **{count}日** です"
@@ -65,22 +65,26 @@ async def vccount(interaction: discord.Interaction, member: discord.Member):
     guild=discord.Object(id=GUILD_ID)
 )
 async def ranking(interaction: discord.Interaction):
-    cur.execute("SELECT user_id, count FROM vc_count ORDER BY count DESC LIMIT 10")
-    rows = cur.fetchall()
+    res = supabase.table("vc_count").select("*").order("count", desc=True).limit(10).execute()
 
-    if not rows:
+    if not res.data:
         await interaction.response.send_message("データがありません")
         return
 
     text = "🏆 連続出席日数ランキング（TOP10）\n\n"
 
-    for i, (user_id, count) in enumerate(rows, start=1):
+    for i, row in enumerate(res.data, start=1):
+        user_id = row["user_id"]
+        count = row["count"]
+
         member = interaction.guild.get_member(user_id)
         name = member.display_name if member else f"ID:{user_id}"
+
         text += f"{i}位：{name} - {count}日\n"
 
     await interaction.response.send_message(text)
 
+# ===== Bot起動 =====
 @bot.event
 async def on_ready():
     guild = discord.Object(id=GUILD_ID)
@@ -88,20 +92,18 @@ async def on_ready():
 
     print(f"{bot.user} でログインしました")
     print(f"同期したコマンド数: {len(synced)}")
-    for cmd in synced:
-        print(cmd.name)
-    
+
+# ===== VC入室検知 =====
 @bot.event
 async def on_voice_state_update(member, before, after):
     if before.channel is None and after.channel is not None:
         today = datetime.now(JST).date()
 
-        cur.execute("SELECT count, last_date FROM vc_count WHERE user_id = ?", (member.id,))
-        row = cur.fetchone()
+        res = supabase.table("vc_count").select("*").eq("user_id", member.id).execute()
 
-        if row:
-            count, last_date = row
-            last_date = datetime.strptime(last_date, "%Y-%m-%d").date()
+        if res.data:
+            count = res.data[0]["count"]
+            last_date = datetime.strptime(res.data[0]["last_date"], "%Y-%m-%d").date()
             diff = (today - last_date).days
 
             if diff == 0:
@@ -111,60 +113,58 @@ async def on_voice_state_update(member, before, after):
             else:
                 new_count = 1
 
-            cur.execute(
-                "UPDATE vc_count SET count = ?, last_date = ? WHERE user_id = ?",
-                (new_count, today.strftime("%Y-%m-%d"), member.id)
-            )
-            db.commit()
-        else:
-            cur.execute(
-                "INSERT INTO vc_count (user_id, count, last_date) VALUES (?, 1, ?)",
-                (member.id, today.strftime("%Y-%m-%d"))
-            )
-            db.commit()
+            supabase.table("vc_count").update({
+                "count": new_count,
+                "last_date": str(today)
+            }).eq("user_id", member.id).execute()
 
+        else:
+            supabase.table("vc_count").insert({
+                "user_id": member.id,
+                "count": 1,
+                "last_date": str(today)
+            }).execute()
+
+# ===== メッセージ検知 =====
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return
 
-    # サーバー内だけ対象（DMは除外）
     if message.guild is None:
         return
 
     today = datetime.now(JST).date()
     member = message.author
 
-    cur.execute("SELECT count, last_date FROM vc_count WHERE user_id = ?", (member.id,))
-    row = cur.fetchone()
+    res = supabase.table("vc_count").select("*").eq("user_id", member.id).execute()
 
-    if row:
-        count, last_date = row
-        last_date = datetime.strptime(last_date, "%Y-%m-%d").date()
+    if res.data:
+        count = res.data[0]["count"]
+        last_date = datetime.strptime(res.data[0]["last_date"], "%Y-%m-%d").date()
         diff = (today - last_date).days
 
-        if diff == 0:
-            pass
-        elif diff == 1:
-            cur.execute(
-                "UPDATE vc_count SET count = ?, last_date = ? WHERE user_id = ?",
-                (count + 1, today.strftime("%Y-%m-%d"), member.id)
-            )
-            db.commit()
+        if diff == 1:
+            new_count = count + 1
+        elif diff > 1:
+            new_count = 1
         else:
-            cur.execute(
-                "UPDATE vc_count SET count = ?, last_date = ? WHERE user_id = ?",
-                (1, today.strftime("%Y-%m-%d"), member.id)
-            )
-            db.commit()
+            return
+
+        supabase.table("vc_count").update({
+            "count": new_count,
+            "last_date": str(today)
+        }).eq("user_id", member.id).execute()
+
     else:
-        cur.execute(
-            "INSERT INTO vc_count (user_id, count, last_date) VALUES (?, 1, ?)",
-            (member.id, today.strftime("%Y-%m-%d"))
-        )
-        db.commit()
+        supabase.table("vc_count").insert({
+            "user_id": member.id,
+            "count": 1,
+            "last_date": str(today)
+        }).execute()
 
     await bot.process_commands(message)
 
+# ===== 起動 =====
 keep_alive()
 bot.run(TOKEN)

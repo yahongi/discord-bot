@@ -4,8 +4,13 @@ from threading import Thread
 
 import discord
 from discord.ext import commands
-from datetime import date, timedelta
+from datetime import datetime, date, timedelta
+import pytz
 from supabase import create_client
+
+def get_today():
+    tz = pytz.timezone("Asia/Tokyo")
+    return datetime.now(tz).date()
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
@@ -22,6 +27,7 @@ intents.message_content = True
 app = Flask(__name__)
 
 @app.route("/")
+
 def home():
     return "Bot is alive!"
 
@@ -34,7 +40,7 @@ def keep_alive():
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 def update_vc(user_id):
-    today = date.today()
+    today = get_today()
     data = supabase.table("vc_count").select("*").eq("user_id", user_id).execute()
 
     if not data.data:

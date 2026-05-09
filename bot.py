@@ -23,15 +23,10 @@ MALE_INTRO_CHANNEL_ID = 1463538621293396152
 FEMALE_INTRO_CHANNEL_ID = 1463538649915330601
 
 INTRO_TEMPLATE = """【名前】
-
 【年齢】
-
 【好きなタイプ】
-
 【嫌いなタイプ】
-
 【趣味】
-
 【一言】"""
 
 intents = discord.Intents.default()

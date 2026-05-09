@@ -19,6 +19,21 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 TOKEN = os.environ["TOKEN"]
 GUILD_ID = 1463536665632051213
 
+MALE_INTRO_CHANNEL_ID = 1463538621293396152
+FEMALE_INTRO_CHANNEL_ID = 1463538649915330601
+
+INTRO_TEMPLATE = """【名前】
+
+【年齢】
+
+【好きなタイプ】
+
+【嫌いなタイプ】
+
+【趣味】
+
+【一言】"""
+
 intents = discord.Intents.default()
 intents.voice_states = True
 intents.members = True
@@ -132,7 +147,23 @@ async def on_message(message):
         return
 
     update_vc(message.author.id)
+
+    if message.channel.id in [MALE_INTRO_CHANNEL_ID, FEMALE_INTRO_CHANNEL_ID]:
+
+        try:
+            async for msg in message.channel.history(limit=30):
+                if msg.author == bot.user and msg.content.strip() == INTRO_TEMPLATE.strip():
+                    await msg.delete()
+        except Exception as e:
+            print("TEMPLATE DELETE ERROR:", repr(e), flush=True)
+
+        try:
+            await message.channel.send(INTRO_TEMPLATE)
+        except Exception as e:
+            print("TEMPLATE SEND ERROR:", repr(e), flush=True)
+
     await bot.process_commands(message)
+        
 
 keep_alive()
 bot.run(TOKEN)

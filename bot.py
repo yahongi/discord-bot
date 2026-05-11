@@ -412,11 +412,14 @@ async def on_voice_state_update(member, before, after):
         if not res.data:
             return
 
-        profile = res.data[0]
+        profile = res.data[0] 
+
+        theme_name = profile.get("theme_color") or "purple"
+        theme_color = THEME_COLORS.get(theme_name, 0x8b5cf6)
 
         embed = discord.Embed(
             title=f"🎧 {member.display_name} さんがVCに参加しました",
-            color=0x8b5cf6
+            color=theme_color
         )
 
         embed.description = (

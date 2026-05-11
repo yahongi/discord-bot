@@ -124,19 +124,31 @@ class ProfileView(View):
 
         await interaction.response.send_modal(ProfileModal(profile))
 
+THEME_COLORS = {
+    "purple": 0x8b5cf6,
+    "pink": 0xff5fa2,
+    "blue": 0x38bdf8,
+    "green": 0x22c55e,
+    "black": 0x2f3136,
+    "red": 0xef4444,
+    "orange": 0xf97316,
+    "yellow": 0xfacc15,
+    "white": 0xffffff,
+    "gold": 0xf59e0b
+}
+
 class ThemeView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
     async def save_theme(self, interaction: discord.Interaction, color_name: str):
-        supabase.table("profiles").upsert({
-            "user_id": interaction.user.id,
-            "theme_color": color_name,
-            "updated_at": str(get_today())
-        }).execute()
+
+        supabase.table("profiles").update({
+            "theme_color": color_name
+        }).eq("user_id", interaction.user.id).execute()
 
         await interaction.response.send_message(
-            f"✅ テーマを `{color_name}` に設定しました！",
+            f"✅ テーマを {color_name} に設定しました！",
             ephemeral=True
         )
 

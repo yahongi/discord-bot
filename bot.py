@@ -273,9 +273,50 @@ async def on_ready():
 
 @bot.event
 async def on_voice_state_update(member, before, after):
+    if member.bot:
+        return
+
     if before.channel is None and after.channel is not None:
         count = update_vc(member.id)
-        print(f"{member.display_name} の連続出席日数: {count}")
+        print(f"{member.display_name} の連続出席日数: {count}", flush=True)
+
+        res = supabase.table("profiles").select("*").eq("user_id", member.id).execute()
+
+        if not res.data:
+            return
+
+        profile = res.data[0]
+
+        embed = discord.Embed(
+            title=f"🎧 {member.display_name} さんがVCに参加しました",
+            color=0x8b5cf6
+        )
+
+        embed.description = (
+            f"**👤 名前**\n"
+            f"{profile.get('name') or '未設定'}\n\n"
+
+            f"**💬 性格と接し方**\n"
+            f"{profile.get('personality') or '未設定'}\n\n"
+
+            f"**⚠️ 苦手・絡む時の注意**\n"
+            f"{profile.get('caution') or '未設定'}\n\n"
+
+            f"**🎮 やってるゲーム**\n"
+            f"{profile.get('games') or '未設定'}\n\n"
+
+            f"**📝 一言**\n"
+            f"{profile.get('message') or '未設定'}\n\n"
+
+            f"**🔥 連続出席日数**\n"
+            f"{count}日"
+        )
+
+        embed.set_thumbnail(url=member.display_avatar.url)
+
+        channel = after.channel
+
+        await channel.send(embed=embed)
 
 @bot.event
 async def on_message(message):

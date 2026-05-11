@@ -194,6 +194,7 @@ async def profile_set(
     description="プロフィールを見る",
     guild=discord.Object(id=GUILD_ID)
 )
+
 async def profile_view(interaction: discord.Interaction, member: discord.Member = None):
     await interaction.response.defer()
 
@@ -210,38 +211,38 @@ async def profile_view(interaction: discord.Interaction, member: discord.Member 
     profile = res.data[0]
     count = vc_res.data[0]["count"] if vc_res.data else 0
 
-embed = discord.Embed(
-    title=f"🪪 {member.display_name} のプロフィール",
-    color=0x8b5cf6
-)
+    embed = discord.Embed(
+        title=f"🪪 {member.display_name} のプロフィール",
+        color=0x8b5cf6
+    )
 
-embed.description = (
-    f"**👤 名前**\n"
-    f"{profile.get('name') or '未設定'}\n\n"
+    embed.description = (
+        f"**👤 名前**\n"
+        f"{profile.get('name') or '未設定'}\n\n"
 
-    f"**💬 性格と接し方**\n"
-    f"{profile.get('personality') or '未設定'}\n\n"
+        f"**💬 性格と接し方**\n"
+        f"{profile.get('personality') or '未設定'}\n\n"
 
-    f"**⚠️ 苦手・絡む時の注意**\n"
-    f"{profile.get('caution') or '未設定'}\n\n"
+        f"**⚠️ 苦手・絡む時の注意**\n"
+        f"{profile.get('caution') or '未設定'}\n\n"
 
-    f"**🎮 やってるゲーム**\n"
-    f"{profile.get('games') or '未設定'}\n\n"
+        f"**🎮 やってるゲーム**\n"
+        f"{profile.get('games') or '未設定'}\n\n"
 
-    f"**📝 一言**\n"
-    f"{profile.get('message') or '未設定'}\n\n"
+        f"**📝 一言**\n"
+        f"{profile.get('message') or '未設定'}\n\n"
 
-    f"**🔥 連続出席日数**\n"
-    f"{count}日"
-)
+        f"**🔥 連続出席日数**\n"
+        f"{count}日"
+    )
 
-embed.set_thumbnail(url=member.display_avatar.url)
+    embed.set_thumbnail(url=member.display_avatar.url)
 
-embed.set_footer(
-    text=f"User ID: {member.id}"
-)
+    embed.set_footer(
+        text=f"User ID: {member.id}"
+    )
 
-await interaction.followup.send(embed=embed)    
+    await interaction.followup.send(embed=embed)
 
 @bot.tree.command(
     name="プロフィールパネル",

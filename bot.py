@@ -210,22 +210,55 @@ async def profile_view(interaction: discord.Interaction, member: discord.Member 
     profile = res.data[0]
     count = vc_res.data[0]["count"] if vc_res.data else 0
 
-    embed = discord.Embed(
-        title="自己紹介",
-        color=0x8b5cf6
-    )
+ embed = discord.Embed(
+    title=f"🪪 {member.display_name} のプロフィール",
+    description="━━━━━━━━━━━━━━",
+    color=0x8b5cf6
+)
 
-    embed.add_field(name="【名前】", value=profile.get("name") or "未設定", inline=False)
-    embed.add_field(name="【性格と接し方】", value=profile.get("personality") or "未設定", inline=False)
-    embed.add_field(name="【苦手、絡む時の注意】", value=profile.get("caution") or "未設定", inline=False)
-    embed.add_field(name="【やってるゲーム】", value=profile.get("games") or "未設定", inline=False)
-    embed.add_field(name="【一言】", value=profile.get("message") or "未設定", inline=False)
-    embed.add_field(name="【連続出席日数】", value=f"{count}日", inline=False)
+embed.add_field(
+    name="👤 名前",
+    value=f"```{profile.get('name') or '未設定'}```",
+    inline=False
+)
 
-    embed.set_thumbnail(url=member.display_avatar.url)
-    embed.set_footer(text=f"User ID: {member.id}")
+embed.add_field(
+    name="💬 性格と接し方",
+    value=f"```{profile.get('personality') or '未設定'}```",
+    inline=False
+)
 
-    await interaction.followup.send(embed=embed)
+embed.add_field(
+    name="⚠️ 苦手・絡む時の注意",
+    value=f"```{profile.get('caution') or '未設定'}```",
+    inline=False
+)
+
+embed.add_field(
+    name="🎮 やってるゲーム",
+    value=f"```{profile.get('games') or '未設定'}```",
+    inline=False
+)
+
+embed.add_field(
+    name="📝 一言",
+    value=f"```{profile.get('message') or '未設定'}```",
+    inline=False
+)
+
+embed.add_field(
+    name="🔥 連続出席日数",
+    value=f"**{count}日**",
+    inline=True
+)
+
+embed.set_thumbnail(url=member.display_avatar.url)
+
+embed.set_footer(
+    text=f"User ID: {member.id} ｜ /プロフィール設定 で編集できます"
+)
+
+await interaction.followup.send(embed=embed)
 
 @bot.tree.command(
     name="プロフィールパネル",

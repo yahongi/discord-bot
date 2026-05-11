@@ -118,6 +118,80 @@ async def ranking(interaction: discord.Interaction):
 
     await interaction.followup.send(text)
 
+@bot.tree.command(
+    name="プロフィール設定",
+    description="プロフィールを設定する",
+    guild=discord.Object(id=GUILD_ID)
+)
+@app_commands.describe(
+    name="名前",
+    personality="性格と接し方",
+    caution="苦手、絡む時の注意",
+    games="やってるゲーム",
+    message="一言"
+)
+async def profile_set(
+    interaction: discord.Interaction,
+    name: str,
+    personality: str,
+    caution: str,
+    games: str,
+    message: str
+):
+    supabase.table("profiles").upsert({
+        "user_id": interaction.user.id,
+        "name": name,
+        "personality": personality,
+        "caution": caution,
+        "games": games,
+        "message": message,
+        "updated_at": str(get_today())
+    }).execute()
+
+    await interaction.response.send_message(
+        "✅ プロフィールを保存しました！",
+        ephemeral=True
+    )
+
+@bot.tree.command(
+    name="プロフィール",
+    description="プロフィールを見る",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def profile_view(interaction: discord.Interaction, member: discord.Member = None):
+    await interaction.response.defer()
+
+    if member is None:
+        member = interaction.user
+
+    res = supabase.table("profiles").select("*").eq("user_id", member.id).execute()
+    vc_res = supabase.table("vc_count").select("*").eq("user_id", member.id).execute()
+
+    if not res.data:
+        await interaction.followup.send(f"{member.display_name} はまだプロフィール未設定です")
+        return
+
+    profile = res.data[0]
+    count = vc_res.data[0]["count"] if vc_res.data else 0
+
+    embed = discord.Embed(
+        title="自己紹介",
+        color=0x8b5cf6
+    )
+
+    embed.add_field(name="【名前】", value=profile.get("name") or "未設定", inline=False)
+    embed.add_field(name="【性格と接し方】", value=profile.get("personality") or "未設定", inline=False)
+    embed.add_field(name="【苦手、絡む時の注意】", value=profile.get("caution") or "未設定", inline=False)
+    embed.add_field(name="【やってるゲーム】", value=profile.get("games") or "未設定", inline=False)
+    embed.add_field(name="【一言】", value=profile.get("message") or "未設定", inline=False)
+    embed.add_field(name="【連続出席日数】", value=f"{count}日", inline=False)
+
+    embed.set_thumbnail(url=member.display_avatar.url)
+    embed.set_footer(text=f"User ID: {member.id}")
+
+    await interaction.followup.send(embed=embed)
+
+
 @bot.event
 async def on_ready():
     print("Bot ready", flush=True)

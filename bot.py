@@ -124,6 +124,62 @@ class ProfileView(View):
 
         await interaction.response.send_modal(ProfileModal(profile))
 
+class ThemeView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    async def save_theme(self, interaction: discord.Interaction, color_name: str):
+        supabase.table("profiles").upsert({
+            "user_id": interaction.user.id,
+            "theme_color": color_name,
+            "updated_at": str(get_today())
+        }).execute()
+
+        await interaction.response.send_message(
+            f"✅ テーマを `{color_name}` に設定しました！",
+            ephemeral=True
+        )
+
+    @discord.ui.button(label="紫", style=discord.ButtonStyle.blurple)
+    async def purple(self, interaction: discord.Interaction, button: Button):
+        await self.save_theme(interaction, "purple")
+
+    @discord.ui.button(label="ピンク", style=discord.ButtonStyle.gray)
+    async def pink(self, interaction: discord.Interaction, button: Button):
+        await self.save_theme(interaction, "pink")
+
+    @discord.ui.button(label="水色", style=discord.ButtonStyle.gray)
+    async def blue(self, interaction: discord.Interaction, button: Button):
+        await self.save_theme(interaction, "blue")
+
+    @discord.ui.button(label="緑", style=discord.ButtonStyle.green)
+    async def green(self, interaction: discord.Interaction, button: Button):
+        await self.save_theme(interaction, "green")
+
+    @discord.ui.button(label="黒", style=discord.ButtonStyle.gray)
+    async def black(self, interaction: discord.Interaction, button: Button):
+        await self.save_theme(interaction, "black")
+
+    @discord.ui.button(label="赤", style=discord.ButtonStyle.red)
+    async def red(self, interaction: discord.Interaction, button: Button):
+        await self.save_theme(interaction, "red")
+
+    @discord.ui.button(label="オレンジ", style=discord.ButtonStyle.gray)
+    async def orange(self, interaction: discord.Interaction, button: Button):
+        await self.save_theme(interaction, "orange")
+
+    @discord.ui.button(label="黄色", style=discord.ButtonStyle.gray)
+    async def yellow(self, interaction: discord.Interaction, button: Button):
+        await self.save_theme(interaction, "yellow")
+
+    @discord.ui.button(label="白", style=discord.ButtonStyle.gray)
+    async def white(self, interaction: discord.Interaction, button: Button):
+        await self.save_theme(interaction, "white")
+
+    @discord.ui.button(label="ゴールド", style=discord.ButtonStyle.gray)
+    async def gold(self, interaction: discord.Interaction, button: Button):
+        await self.save_theme(interaction, "gold")
+        
 def update_vc(user_id):
     today = get_today()
     data = supabase.table("vc_count").select("*").eq("user_id", user_id).execute()
@@ -249,9 +305,12 @@ async def profile_view(interaction: discord.Interaction, member: discord.Member 
     profile = res.data[0]
     count = vc_res.data[0]["count"] if vc_res.data else 0
 
+    theme_name = profile.get("theme_color") or "purple"
+    theme_color = THEME_COLORS.get(theme_name, 0x8b5cf6)
+
     embed = discord.Embed(
         title=f"🪪 {member.display_name} のプロフィール",
-        color=0x8b5cf6
+        color=theme_color
     )
 
     embed.description = (
@@ -295,6 +354,24 @@ async def profile_panel(interaction: discord.Interaction):
     )
 
     await interaction.response.send_message(embed=embed, view=ProfileView())
+
+@bot.tree.command(
+    name="テーマパネル",
+    description="テーマカラー設定",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def theme_panel(interaction: discord.Interaction):
+
+    embed = discord.Embed(
+        title="🎨 テーマ設定",
+        description="好きな色を押してください。",
+        color=0x8b5cf6
+    )
+
+    await interaction.response.send_message(
+        embed=embed,
+        view=ThemeView()
+    )
 
 @bot.event
 async def on_ready():

@@ -51,14 +51,48 @@ def keep_alive():
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-class ProfileModal(Modal, title="自己紹介作成"):
-    name = TextInput(label="名前")
-    personality = TextInput(label="性格と接し方", style=discord.TextStyle.paragraph)
-    caution = TextInput(label="苦手、絡む時の注意", style=discord.TextStyle.paragraph)
-    games = TextInput(label="やってるゲーム")
-    message = TextInput(label="一言", style=discord.TextStyle.paragraph)
+class ProfileModal(Modal):
+
+    def __init__(self, profile=None):
+
+        super().__init__(title="自己紹介作成")
+
+        self.name = TextInput(
+            label="名前",
+            default=profile.get("name", "") if profile else ""
+        )
+
+        self.personality = TextInput(
+            label="性格と接し方",
+            style=discord.TextStyle.paragraph,
+            default=profile.get("personality", "") if profile else ""
+        )
+
+        self.caution = TextInput(
+            label="苦手、絡む時の注意",
+            style=discord.TextStyle.paragraph,
+            default=profile.get("caution", "") if profile else ""
+        )
+
+        self.games = TextInput(
+            label="やってるゲーム",
+            default=profile.get("games", "") if profile else ""
+        )
+
+        self.message = TextInput(
+            label="一言",
+            style=discord.TextStyle.paragraph,
+            default=profile.get("message", "") if profile else ""
+        )
+
+        self.add_item(self.name)
+        self.add_item(self.personality)
+        self.add_item(self.caution)
+        self.add_item(self.games)
+        self.add_item(self.message)
 
     async def on_submit(self, interaction: discord.Interaction):
+
         supabase.table("profiles").upsert({
             "user_id": interaction.user.id,
             "name": str(self.name),
@@ -70,10 +104,10 @@ class ProfileModal(Modal, title="自己紹介作成"):
         }).execute()
 
         await interaction.response.send_message(
-            "✅ プロフィールを保存しました！\n`/プロフィール` で確認できます。",
+            "✅ プロフィールを保存しました！",
             ephemeral=True
         )
-
+        
 class ProfileView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -84,7 +118,11 @@ class ProfileView(View):
 
     @discord.ui.button(label="修正する", style=discord.ButtonStyle.blurple)
     async def edit_profile(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(ProfileModal())
+        res = supabase.table("profiles").select("*").eq("user_id", interaction.user.id).execute()
+
+        profile = res.data[0] if res.data else {}
+
+        await interaction.response.send_modal(ProfileModal(profile))
 
 def update_vc(user_id):
     today = get_today()

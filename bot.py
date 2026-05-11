@@ -5,6 +5,7 @@ from threading import Thread
 import discord
 from discord.ext import commands
 from discord import app_commands
+from discord.ui import View, Button, Modal, TextInput
 from datetime import datetime, date, timedelta
 import pytz
 from supabase import create_client
@@ -49,6 +50,41 @@ def keep_alive():
     Thread(target=run_web).start()
 
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+class ProfileModal(Modal, title="自己紹介作成"):
+    name = TextInput(label="名前")
+    personality = TextInput(label="性格と接し方", style=discord.TextStyle.paragraph)
+    caution = TextInput(label="苦手、絡む時の注意", style=discord.TextStyle.paragraph)
+    games = TextInput(label="やってるゲーム")
+    message = TextInput(label="一言", style=discord.TextStyle.paragraph)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        supabase.table("profiles").upsert({
+            "user_id": interaction.user.id,
+            "name": str(self.name),
+            "personality": str(self.personality),
+            "caution": str(self.caution),
+            "games": str(self.games),
+            "message": str(self.message),
+            "updated_at": str(get_today())
+        }).execute()
+
+        await interaction.response.send_message(
+            "✅ プロフィールを保存しました！\n`/プロフィール` で確認できます。",
+            ephemeral=True
+        )
+
+class ProfileView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="自己紹介作成", style=discord.ButtonStyle.green)
+    async def create_profile(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_modal(ProfileModal())
+
+    @discord.ui.button(label="修正する", style=discord.ButtonStyle.blurple)
+    async def edit_profile(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_modal(ProfileModal())
 
 def update_vc(user_id):
     today = get_today()
@@ -191,6 +227,19 @@ async def profile_view(interaction: discord.Interaction, member: discord.Member 
 
     await interaction.followup.send(embed=embed)
 
+@bot.tree.command(
+    name="プロフィールパネル",
+    description="プロフィール作成パネルを表示する",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def profile_panel(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="自己紹介作成",
+        description="下のボタンを押して自己紹介を作成・修正してください。",
+        color=0x8b5cf6
+    )
+
+    await interaction.response.send_message(embed=embed, view=ProfileView())
 
 @bot.event
 async def on_ready():

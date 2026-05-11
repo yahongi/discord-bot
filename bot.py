@@ -276,7 +276,7 @@ async def on_voice_state_update(member, before, after):
     if member.bot:
         return
 
-    if before.channel is None and after.channel is not None:
+    if after.channel is not None and before.channel != after.channel:
         count = update_vc(member.id)
         print(f"{member.display_name} の連続出席日数: {count}", flush=True)
 

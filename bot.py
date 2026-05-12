@@ -501,24 +501,6 @@ async def profile_panel(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, view=ProfileView())
 
-@bot.tree.command(
-    name="テーマパネル",
-    description="テーマカラー設定",
-    guild=discord.Object(id=GUILD_ID)
-)
-async def theme_panel(interaction: discord.Interaction):
-
-    embed = discord.Embed(
-        title="🎨 テーマ設定",
-        description="好きな色を押してください。",
-        color=0x8b5cf6
-    )
-
-    await interaction.response.send_message(
-        embed=embed,
-        view=ThemeView()
-    )
-
 @bot.event
 async def on_ready():
     print("Bot ready", flush=True)

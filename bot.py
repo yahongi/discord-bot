@@ -217,6 +217,9 @@ class ProfileView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
+    async def save_theme(self, interaction: discord.Interaction, color_name: str):
+        await ThemeView().save_theme(interaction, color_name)
+
     @discord.ui.button(label="自己紹介作成", style=discord.ButtonStyle.green)
     async def create_profile(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(ProfileModal())
@@ -228,43 +231,42 @@ class ProfileView(View):
         profile = res.data[0] if res.data else {}
 
         await interaction.response.send_modal(ProfileModal(profile))
-
     @discord.ui.button(label="🟣 紫", style=discord.ButtonStyle.gray, row=1)
     async def purple_theme(self, interaction: discord.Interaction, button: Button):
-        await ThemeView().save_theme(interaction, "purple")
-
+        await self.save_theme(interaction, "purple")
+        
     @discord.ui.button(label="🩷 ピンク", style=discord.ButtonStyle.gray, row=1)
     async def pink_theme(self, interaction: discord.Interaction, button: Button):
-        await ThemeView().save_theme(interaction, "pink")
+        await self.save_theme(interaction, "pink")
 
     @discord.ui.button(label="🔵 水色", style=discord.ButtonStyle.gray, row=1)
     async def blue_theme(self, interaction: discord.Interaction, button: Button):
-        await ThemeView().save_theme(interaction, "blue")
+        await self.save_theme(interaction, "blue")
 
     @discord.ui.button(label="🟢 緑", style=discord.ButtonStyle.gray, row=1)
     async def green_theme(self, interaction: discord.Interaction, button: Button):
-        await ThemeView().save_theme(interaction, "green")
+        await self.save_theme(interaction, "green")
 
     @discord.ui.button(label="⚫ 黒", style=discord.ButtonStyle.gray, row=1)
     async def black_theme(self, interaction: discord.Interaction, button: Button):
-        await ThemeView().save_theme(interaction, "black")
+        await self.save_theme(interaction, "black")
 
     @discord.ui.button(label="🔴 赤", style=discord.ButtonStyle.gray, row=2)
     async def red_theme(self, interaction: discord.Interaction, button: Button):
-        await ThemeView().save_theme(interaction, "red")
+        await self.save_theme(interaction, "red")
 
     @discord.ui.button(label="🟠 オレンジ", style=discord.ButtonStyle.gray, row=2)
     async def orange_theme(self, interaction: discord.Interaction, button: Button):
-        await ThemeView().save_theme(interaction, "orange")
+        await self.save_theme(interaction, "orange")
 
     @discord.ui.button(label="🟡 黄色", style=discord.ButtonStyle.gray, row=2)
     async def yellow_theme(self, interaction: discord.Interaction, button: Button):
-        await ThemeView().save_theme(interaction, "yellow")
+        await self.save_theme(interaction, "yellow")
 
     @discord.ui.button(label="⚪ 白", style=discord.ButtonStyle.gray, row=2)
     async def white_theme(self, interaction: discord.Interaction, button: Button):
-        await ThemeView().save_theme(interaction, "white")
-
+        await self.save_theme(interaction, "white")
+        
 THEME_COLORS = {
     "purple": 0x8b5cf6,
     "pink": 0xff5fa2,

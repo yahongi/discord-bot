@@ -136,42 +136,26 @@ class ProfileModal(Modal):
             color=theme_color
         )
 
-        embed.add_field(
-            name="👤 名前",
-            value=profile.get("name") or "未設定",
-            inline=False
-        )
+        embed.description = (
+            f"**👤 名前**\n"
+            f"{profile.get('name') or '未設定'}\n\n"
 
-        embed.add_field(
-            name="💬 性格と接し方",
-            value=profile.get("personality") or "未設定",
-            inline=False
-        )
+            f"**💬 性格と接し方**\n"
+            f"{profile.get('personality') or '未設定'}\n\n"
 
-        embed.add_field(
-            name="⚠️ 苦手・絡む時の注意",
-            value=profile.get("caution") or "未設定",
-            inline=False
-        )
+            f"**⚠️ 苦手・絡む時の注意**\n"
+            f"{profile.get('caution') or '未設定'}\n\n"
 
-        embed.add_field(
-            name="🎮 やってるゲーム",
-            value=profile.get("games") or "未設定",
-            inline=False
-        )
+            f"**🎮 やってるゲーム**\n"
+            f"{profile.get('games') or '未設定'}\n\n"
 
-        embed.add_field(
-            name="📝 一言",
-            value=profile.get("message") or "未設定",
-            inline=False
-        )
+            f"**📝 一言**\n"
+            f"{profile.get('message') or '未設定'}\n\n"
 
-        embed.add_field(
-            name="🔥 連続出席日数",
-            value=f"{count}日",
-            inline=False
-        )
-
+            f"**🔥 連続出席日数**\n"
+            f"{count}日"
+        ) 
+        
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
 
         profile_message = await interaction.channel.send(

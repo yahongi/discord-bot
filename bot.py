@@ -102,9 +102,114 @@ class ProfileModal(Modal):
             "message": str(self.message),
             "updated_at": str(get_today())
         }).execute()
+        
+        profile_data = supabase.table("profiles").select("*").eq(
+            "user_id",
+            interaction.user.id
+        ).execute()
+
+        profile = profile_data.data[0]
+        
+        old_profile_message_id = profile.get("profile_message_id")
+
+        if old_profile_message_id:
+            try:
+                old_message = await interaction.channel.fetch_message(
+                    int(old_profile_message_id)
+                )
+                await old_message.delete()
+            except:
+                pass
+
+        vc_res = supabase.table("vc_count").select("*").eq(
+            "user_id",
+            interaction.user.id
+        ).execute()
+
+        count = vc_res.data[0]["count"] if vc_res.data else 0
+
+        theme_name = profile.get("theme_color") or "purple"
+        theme_color = THEME_COLORS.get(theme_name, 0x8b5cf6)
+
+        embed = discord.Embed(
+            title=f"🪪 {interaction.user.display_name} のプロフィール",
+            color=theme_color
+        )
+
+        embed.add_field(
+            name="👤 名前",
+            value=profile.get("name") or "未設定",
+            inline=False
+        )
+
+        embed.add_field(
+            name="💬 性格と接し方",
+            value=profile.get("personality") or "未設定",
+            inline=False
+        )
+
+        embed.add_field(
+            name="⚠️ 苦手・絡む時の注意",
+            value=profile.get("caution") or "未設定",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🎮 やってるゲーム",
+            value=profile.get("games") or "未設定",
+            inline=False
+        )
+
+        embed.add_field(
+            name="📝 一言",
+            value=profile.get("message") or "未設定",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🔥 連続出席日数",
+            value=f"{count}日",
+            inline=False
+        )
+
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
+
+        profile_message = await interaction.channel.send(
+            embed=embed
+        )
+
+        supabase.table("profiles").update({
+            "profile_message_id": str(profile_message.id)
+        }).eq("user_id", interaction.user.id).execute()
+
+        old_panel_message_id = profile.get("panel_message_id")
+
+        if old_panel_message_id:
+            try:
+                old_panel = await interaction.channel.fetch_message(
+                    int(old_panel_message_id)
+                )
+                await old_panel.delete()
+            except:
+                pass
+
+        panel_embed = discord.Embed(
+            title="プロフィール管理",
+            description="自己紹介の作成・修正、テーマカラー変更ができます。",
+            color=theme_color
+        )
+
+        panel_message = await interaction.channel.send(
+            embed=panel_embed,
+            view=ProfileView()
+        )
+
+        supabase.table("profiles").update({
+            "panel_message_id": str(panel_message.id)
+        }).eq("user_id", interaction.user.id).execute()
 
         await interaction.response.send_message(
-            "✅ プロフィールを保存しました！",
+            "✅ プロフィールを更新しました！",
             ephemeral=True
         )
         

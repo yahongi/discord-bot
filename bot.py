@@ -351,6 +351,32 @@ class ThemeView(View):
             "profile_message_id": str(profile_message.id)
         }).eq("user_id", interaction.user.id).execute()
 
+        old_panel_message_id = profile.get("panel_message_id")
+
+        if old_panel_message_id:
+            try:
+                old_panel = await interaction.channel.fetch_message(
+                    int(old_panel_message_id)
+                )
+                await old_panel.delete()
+            except:
+                pass
+
+        panel_embed = discord.Embed(
+            title="自己紹介生成",
+            description="自己紹介の作成・修正、テーマカラー変更ができます。",
+            color=theme_color
+        )
+
+        panel_message = await interaction.channel.send(
+            embed=panel_embed,
+            view=ProfileView()
+        )
+
+        supabase.table("profiles").update({
+            "panel_message_id": str(panel_message.id)
+        }).eq("user_id", interaction.user.id).execute()
+
         await interaction.response.send_message(
             f"✅ テーマを {color_name} に設定しました！",
             ephemeral=True

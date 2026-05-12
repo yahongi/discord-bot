@@ -150,7 +150,7 @@ class ThemeView(View):
             ephemeral=True
         )
 
-    @discord.ui.button(label="🟣 紫", style=discord.ButtonStyle.blurple, row=0)
+    @discord.ui.button(label="🟣 紫", style=discord.ButtonStyle.gray, row=0)
     async def purple(self, interaction: discord.Interaction, button: Button):
         await self.save_theme(interaction, "purple")
 
@@ -162,7 +162,7 @@ class ThemeView(View):
     async def blue(self, interaction: discord.Interaction, button: Button):
         await self.save_theme(interaction, "blue")
 
-    @discord.ui.button(label="🟢 緑", style=discord.ButtonStyle.green, row=0)
+    @discord.ui.button(label="🟢 緑", style=discord.ButtonStyle.gray, row=0)
     async def green(self, interaction: discord.Interaction, button: Button):
         await self.save_theme(interaction, "green")
 
@@ -170,7 +170,7 @@ class ThemeView(View):
     async def black(self, interaction: discord.Interaction, button: Button):
         await self.save_theme(interaction, "black")
 
-    @discord.ui.button(label="🔴 赤", style=discord.ButtonStyle.red, row=1)
+    @discord.ui.button(label="🔴 赤", style=discord.ButtonStyle.gray, row=1)
     async def red(self, interaction: discord.Interaction, button: Button):
         await self.save_theme(interaction, "red")
 

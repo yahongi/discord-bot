@@ -279,10 +279,73 @@ THEME_COLORS = {
 class ThemeView(View):
     def __init__(self):
         super().__init__(timeout=None)
-
+           
     async def save_theme(self, interaction: discord.Interaction, color_name: str):
         supabase.table("profiles").update({
             "theme_color": color_name
+        }).eq("user_id", interaction.user.id).execute()
+
+        profile_data = supabase.table("profiles").select("*").eq(
+            "user_id",
+            interaction.user.id
+        ).execute()
+
+        if not profile_data.data:
+            await interaction.response.send_message(
+                "先に自己紹介を作成してください！",
+                ephemeral=True
+            )
+            return
+
+        profile = profile_data.data[0]
+
+        old_profile_message_id = profile.get("profile_message_id")
+
+        if old_profile_message_id:
+            try:
+                old_message = await interaction.channel.fetch_message(
+                    int(old_profile_message_id)
+                )
+                await old_message.delete()
+            except:
+                pass
+
+        vc_res = supabase.table("vc_count").select("*").eq(
+            "user_id",
+            interaction.user.id
+        ).execute()
+
+        count = vc_res.data[0]["count"] if vc_res.data else 0
+
+        theme_color = THEME_COLORS.get(color_name, 0x8b5cf6)
+
+        embed = discord.Embed(
+            title=f"🪪 {interaction.user.display_name} のプロフィール",
+            color=theme_color
+        )
+
+        embed.description = (
+            f"**👤 名前**\n"
+            f"{profile.get('name') or '未設定'}\n\n"
+            f"**💬 性格と接し方**\n"
+            f"{profile.get('personality') or '未設定'}\n\n"
+            f"**⚠️ 苦手・絡む時の注意**\n"
+            f"{profile.get('caution') or '未設定'}\n\n"
+            f"**🎮 やってるゲーム**\n"
+            f"{profile.get('games') or '未設定'}\n\n"
+            f"**📝 一言**\n"
+            f"{profile.get('message') or '未設定'}\n\n"
+            f"**🔥 連続出席日数**\n"
+            f"{count}日"
+        )
+
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        embed.set_footer(text=f"User ID: {interaction.user.id}")
+
+        profile_message = await interaction.channel.send(embed=embed)
+
+        supabase.table("profiles").update({
+            "profile_message_id": str(profile_message.id)
         }).eq("user_id", interaction.user.id).execute()
 
         await interaction.response.send_message(

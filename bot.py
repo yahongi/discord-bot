@@ -192,9 +192,9 @@ class ProfileModal(Modal):
                 await old_panel.delete()
             except:
                 pass
-
+       
         panel_embed = discord.Embed(
-            title="プロフィール管理",
+            title="自己紹介生成",
             description="自己紹介の作成・修正、テーマカラー変更ができます。",
             color=theme_color
         )
@@ -203,7 +203,6 @@ class ProfileModal(Modal):
             embed=panel_embed,
             view=ProfileView()
         )
-
         supabase.table("profiles").update({
             "panel_message_id": str(panel_message.id)
         }).eq("user_id", interaction.user.id).execute()
@@ -211,7 +210,7 @@ class ProfileModal(Modal):
         await interaction.response.send_message(
             "✅ プロフィールを更新しました！",
             ephemeral=True
-        )
+        ) 
         
 class ProfileView(View):
     def __init__(self):

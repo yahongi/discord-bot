@@ -228,6 +228,42 @@ class ProfileView(View):
 
         await interaction.response.send_modal(ProfileModal(profile))
 
+    @discord.ui.button(label="🟣 紫", style=discord.ButtonStyle.gray, row=1)
+    async def purple_theme(self, interaction: discord.Interaction, button: Button):
+        await ThemeView().save_theme(interaction, "purple")
+
+    @discord.ui.button(label="🩷 ピンク", style=discord.ButtonStyle.gray, row=1)
+    async def pink_theme(self, interaction: discord.Interaction, button: Button):
+        await ThemeView().save_theme(interaction, "pink")
+
+    @discord.ui.button(label="🔵 水色", style=discord.ButtonStyle.gray, row=1)
+    async def blue_theme(self, interaction: discord.Interaction, button: Button):
+        await ThemeView().save_theme(interaction, "blue")
+
+    @discord.ui.button(label="🟢 緑", style=discord.ButtonStyle.gray, row=1)
+    async def green_theme(self, interaction: discord.Interaction, button: Button):
+        await ThemeView().save_theme(interaction, "green")
+
+    @discord.ui.button(label="⚫ 黒", style=discord.ButtonStyle.gray, row=1)
+    async def black_theme(self, interaction: discord.Interaction, button: Button):
+        await ThemeView().save_theme(interaction, "black")
+
+    @discord.ui.button(label="🔴 赤", style=discord.ButtonStyle.gray, row=2)
+    async def red_theme(self, interaction: discord.Interaction, button: Button):
+        await ThemeView().save_theme(interaction, "red")
+
+    @discord.ui.button(label="🟠 オレンジ", style=discord.ButtonStyle.gray, row=2)
+    async def orange_theme(self, interaction: discord.Interaction, button: Button):
+        await ThemeView().save_theme(interaction, "orange")
+
+    @discord.ui.button(label="🟡 黄色", style=discord.ButtonStyle.gray, row=2)
+    async def yellow_theme(self, interaction: discord.Interaction, button: Button):
+        await ThemeView().save_theme(interaction, "yellow")
+
+    @discord.ui.button(label="⚪ 白", style=discord.ButtonStyle.gray, row=2)
+    async def white_theme(self, interaction: discord.Interaction, button: Button):
+        await ThemeView().save_theme(interaction, "white")
+
 THEME_COLORS = {
     "purple": 0x8b5cf6,
     "pink": 0xff5fa2,

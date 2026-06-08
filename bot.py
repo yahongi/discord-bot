@@ -456,19 +456,37 @@ async def vccount(interaction: discord.Interaction, member: discord.Member = Non
 @bot.tree.command(name="出席ランキング", description="連続出席日数ランキング（上位10人）", guild=discord.Object(id=GUILD_ID))
 async def ranking(interaction: discord.Interaction):
     await interaction.response.defer()
-    res = supabase.table("vc_count").select("*").order("count", desc=True).limit(10).execute()
 
-    if not res.data:
-        await interaction.followup.send("データがありません")
-        return
+    try:
+        res = supabase.table("vc_count").select("*").order(
+            "count",
+            desc=True
+        ).limit(10).execute()
 
-    text = "🏆 連続出席日数ランキング（TOP10）\n\n"
-    for i, row in enumerate(res.data, start=1):
-        member = interaction.guild.get_member(row["user_id"])
-        name = member.display_name if member else f"ID:{row['user_id']}"
-        text += f"{i}位：{name} - {row['count']}日\n"
+        if not res.data:
+            await interaction.followup.send("データがありません")
+            return
 
-    await interaction.followup.send(text)
+        text = "🏆 連続出席日数ランキング（TOP10）\n\n"
+
+        for i, row in enumerate(res.data, start=1):
+            user_id = int(row["user_id"])
+            member = interaction.guild.get_member(user_id)
+
+            if member:
+                name = member.display_name
+            else:
+                name = f"ID:{user_id}"
+
+            text += f"{i}位：{name} - {row['count']}日\n"
+
+        await interaction.followup.send(text)
+
+    except Exception as e:
+        print("RANKING ERROR:", repr(e), flush=True)
+        await interaction.followup.send(
+            f"ランキング取得中にエラーが出ました：`{repr(e)}`"
+        )
 
 @bot.tree.command(
     name="プロフィール設定",

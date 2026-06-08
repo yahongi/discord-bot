@@ -480,7 +480,10 @@ async def ranking(interaction: discord.Interaction):
 
             text += f"{i}位：{name} - {row['count']}日\n"
 
-        await interaction.followup.send(text)
+        await interaction.followup.send(
+            text[:1900],
+            allowed_mentions=discord.AllowedMentions.none()
+        )
 
     except Exception as e:
         print("RANKING ERROR:", repr(e), flush=True)

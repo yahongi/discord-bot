@@ -436,7 +436,6 @@ def update_vc(user_id):
     guild=discord.Object(id=GUILD_ID)
 )
 async def vccount(interaction: discord.Interaction, member: discord.Member = None):
-    await interaction.response.defer()
 
     if member is None:
         member = interaction.user
@@ -445,13 +444,12 @@ async def vccount(interaction: discord.Interaction, member: discord.Member = Non
         res = supabase.table("vc_count").select("*").eq("user_id", member.id).execute()
         count = res.data[0]["count"] if res.data else 0
 
-        await interaction.followup.send(
+        await interaction.response.send_message(
             f"{member.display_name} の連続出席日数は **{count}日** です"
         )
 
     except Exception as e:
         print("ERROR:", repr(e), flush=True)
-        await interaction.followup.send(f"エラー: `{repr(e)}`")
         
 @bot.tree.command(name="出席ランキング", description="連続出席日数ランキング（上位10人）", guild=discord.Object(id=GUILD_ID))
 async def ranking(interaction: discord.Interaction):

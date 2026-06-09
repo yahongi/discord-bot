@@ -468,17 +468,9 @@ async def ranking(interaction: discord.Interaction):
             return
 
         text = "🏆 連続出席日数ランキング（TOP10）\n\n"
-
-        for i, row in enumerate(res.data, start=1):
-            user_id = int(row["user_id"])
-            member = interaction.guild.get_member(user_id)
-
-            if member:
-                name = member.display_name
-            else:
-                name = f"ID:{user_id}"
-
-            text += f"{i}位：{name} - {row['count']}日\n"
+        
+        for i, row in enumerate(res.data, start=1):   
+            text += f"{i}位：ID:{row['user_id']} - {row['count']}日\n" 
 
         await interaction.followup.send(
             text[:1900],

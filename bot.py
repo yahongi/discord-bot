@@ -491,7 +491,6 @@ async def ranking(interaction: discord.Interaction):
 )
 
 async def profile_view(interaction: discord.Interaction, member: discord.Member = None):
-    await interaction.response.defer()
 
     if member is None:
         member = interaction.user
@@ -500,7 +499,9 @@ async def profile_view(interaction: discord.Interaction, member: discord.Member 
     vc_res = supabase.table("vc_count").select("*").eq("user_id", member.id).execute()
 
     if not res.data:
-        await interaction.followup.send(f"{member.display_name} はまだプロフィール未設定です")
+        await interaction.response.send_message(
+            f"{member.display_name} はまだプロフィール未設定です"
+        )
         return
 
     profile = res.data[0]
@@ -540,7 +541,7 @@ async def profile_view(interaction: discord.Interaction, member: discord.Member 
         text=f"User ID: {member.id}"
     )
 
-    await interaction.followup.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(
     name="プロフィールパネル",

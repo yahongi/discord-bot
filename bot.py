@@ -20,6 +20,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 TOKEN = os.environ["TOKEN"]
 GUILD_ID = 1463536665632051213
+LOG_CHANNEL_ID = 1513382077771546886
 
 MALE_INTRO_CHANNEL_ID = 1463538621293396152
 FEMALE_INTRO_CHANNEL_ID = 1463538649915330601
@@ -642,6 +643,56 @@ async def on_message(message):
             print("TEMPLATE SEND ERROR:", repr(e), flush=True)
 
     await bot.process_commands(message)
+
+@bot.event
+async def on_member_remove(member):
+    channel = bot.get_channel(LOG_CHANNEL_ID)
+
+    if channel is None:
+        return
+
+    join_date = member.joined_at
+
+    if join_date:
+        days = (discord.utils.utcnow() - join_date).days
+        join_text = join_date.strftime("%Y/%m/%d")
+    else:
+        days = 0
+        join_text = "不明"
+
+    roles = [
+        role.name
+        for role in member.roles
+        if role.name != "@everyone"
+    ]
+
+    role_text = " / ".join(roles) if roles else "なし"
+
+    embed = discord.Embed(
+        title="【生徒退出】",
+        color=discord.Color.red()
+    )
+
+    embed.description = (
+        f"{member.display_name}\n"
+        f"ID：{member.id}\n\n"
+
+        f"参加日\n"
+        f"{join_text}\n\n"
+
+        f"在籍日数\n"
+        f"{days}日\n\n"
+
+        f"ロール\n"
+        f"{role_text}\n\n"
+
+        f"退出日時\n"
+        f"{datetime.now(pytz.timezone('Asia/Tokyo')).strftime('%Y/%m/%d %H:%M')}"
+)
+    
+    embed.set_thumbnail(url=member.display_avatar.url)
+
+    await channel.send(embed=embed)
         
 
 keep_alive()

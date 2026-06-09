@@ -455,8 +455,6 @@ async def vccount(interaction: discord.Interaction, member: discord.Member = Non
         
 @bot.tree.command(name="出席ランキング", description="連続出席日数ランキング（上位10人）", guild=discord.Object(id=GUILD_ID))
 async def ranking(interaction: discord.Interaction):
-    await interaction.response.defer()
-
     try:
         res = supabase.table("vc_count").select("*").order(
             "count",
@@ -464,59 +462,21 @@ async def ranking(interaction: discord.Interaction):
         ).limit(10).execute()
 
         if not res.data:
-            await interaction.followup.send("データがありません")
+            await interaction.response.send_message("データがありません")
             return
 
         text = "🏆 連続出席日数ランキング（TOP10）\n\n"
-        
-        for i, row in enumerate(res.data, start=1):   
-            text += f"{i}位：ID:{row['user_id']} - {row['count']}日\n" 
 
-        await interaction.followup.send(
+        for i, row in enumerate(res.data, start=1):
+            text += f"{i}位：ID:{row['user_id']} - {row['count']}日\n"
+
+        await interaction.response.send_message(
             text[:1900],
             allowed_mentions=discord.AllowedMentions.none()
         )
 
     except Exception as e:
         print("RANKING ERROR:", repr(e), flush=True)
-        await interaction.followup.send(
-            f"ランキング取得中にエラーが出ました：`{repr(e)}`"
-        )
-
-@bot.tree.command(
-    name="プロフィール設定",
-    description="プロフィールを設定する",
-    guild=discord.Object(id=GUILD_ID)
-)
-@app_commands.describe(
-    name="名前",
-    personality="性格と接し方",
-    caution="苦手、絡む時の注意",
-    games="やってるゲーム",
-    message="一言"
-)
-async def profile_set(
-    interaction: discord.Interaction,
-    name: str,
-    personality: str,
-    caution: str,
-    games: str,
-    message: str
-):
-    supabase.table("profiles").upsert({
-        "user_id": interaction.user.id,
-        "name": name,
-        "personality": personality,
-        "caution": caution,
-        "games": games,
-        "message": message,
-        "updated_at": str(get_today())
-    }).execute()
-
-    await interaction.response.send_message(
-        "✅ プロフィールを保存しました！",
-        ephemeral=True
-    )
 
 @bot.tree.command(
     name="プロフィール",

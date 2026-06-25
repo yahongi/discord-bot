@@ -692,7 +692,10 @@ async def on_member_remove(member):
     
     embed.set_thumbnail(url=member.display_avatar.url)
 
-    await channel.send(embed=embed)
+    try:
+        await channel.send(embed=embed)
+    except discord.HTTPException as e:
+        print("MEMBER REMOVE LOG SEND ERROR:", repr(e), flush=True)
         
 
 keep_alive()

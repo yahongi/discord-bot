@@ -452,21 +452,32 @@ async def vccount(interaction: discord.Interaction, member: discord.Member = Non
     except Exception as e:
         print("ERROR:", repr(e), flush=True)
         
-@bot.tree.command(name="出席ランキング", description="連続出席日数ランキング（上位10人）", guild=discord.Object(id=GUILD_ID))
-async def ranking(interaction: discord.Interaction):
+@bot.tree.command(name="出席ランキング", description="連続出席日数ランキングをページごとに見る", guild=discord.Object(id=GUILD_ID))
+async def ranking(
+    interaction: discord.Interaction,
+    page: int = 1
+):
     try:
+        if page < 1:
+           page = 1
+
+        start = (page - 1) * 10
+        end = start + 9
         res = supabase.table("vc_count").select("*").order(
             "count",
             desc=True
-        ).limit(10).execute()
+        ).range(start, end).execute()
 
         if not res.data:
             await interaction.response.send_message("データがありません")
             return
 
-        text = "🏆 連続出席日数ランキング（TOP10）\n\n"
+        text = (
+            f"🏆 連続出席日数ランキング\n"
+            f"（{start + 1}位 ～ {start + len(res.data)}位）\n\n"
+        )
 
-        for i, row in enumerate(res.data, start=1):
+        for i, row in enumerate(res.data, start=start + 1):
             user_id = int(row["user_id"])
             member = interaction.guild.get_member(user_id)
 

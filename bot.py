@@ -451,6 +451,80 @@ async def vccount(interaction: discord.Interaction, member: discord.Member = Non
 
     except Exception as e:
         print("ERROR:", repr(e), flush=True)
+
+async def create_ranking_text(guild, page: int):
+    if page < 1:
+        page = 1
+
+    start = (page - 1) * 10
+    end = start + 9
+
+    res = supabase.table("vc_count").select("*").order(
+        "count",
+        desc=True
+    ).range(start, end).execute()
+
+    if not res.data:
+        return "データがありません"
+
+    text = (
+        f"🏆 連続出席日数ランキング\n"
+        f"（{start + 1}位 ～ {start + len(res.data)}位）\n\n"
+    )
+
+    for i, row in enumerate(res.data, start=start + 1):
+        user_id = int(row["user_id"])
+        member = guild.get_member(user_id)
+
+        if member:
+            name = member.display_name
+        else:
+            name = f"ID:{user_id}"
+
+        text += f"{i}位：{name} - {row['count']}日\n"
+
+    return text
+
+
+class RankingView(discord.ui.View):
+    def __init__(self, page: int):
+        super().__init__(timeout=60)
+        self.page = page
+
+    @discord.ui.button(label="前へ", style=discord.ButtonStyle.gray)
+    async def prev_page(self, interaction: discord.Interaction, button: Button):
+        if self.page <= 1:
+            await interaction.response.send_message(
+                "これ以上前のページはありません",
+                ephemeral=True
+            )
+            return
+
+        self.page -= 1
+        text = await create_ranking_text(interaction.guild, self.page)
+
+        await interaction.response.edit_message(
+            content=text,
+            view=self
+        )
+
+    @discord.ui.button(label="次へ", style=discord.ButtonStyle.gray)
+    async def next_page(self, interaction: discord.Interaction, button: Button):
+        self.page += 1
+        text = await create_ranking_text(interaction.guild, self.page)
+
+        if text == "データがありません":
+            self.page -= 1
+            await interaction.response.send_message(
+                "これ以上次のページはありません",
+                ephemeral=True
+            )
+            return
+
+        await interaction.response.edit_message(
+            content=text,
+            view=self
+        )
         
 @bot.tree.command(name="出席ランキング", description="連続出席日数ランキングをページごとに見る", guild=discord.Object(id=GUILD_ID))
 async def ranking(
@@ -458,44 +532,21 @@ async def ranking(
     page: int = 1
 ):
     try:
-        if page < 1:
-           page = 1
+        text = await create_ranking_text(interaction.guild, page)
 
-        start = (page - 1) * 10
-        end = start + 9
-        res = supabase.table("vc_count").select("*").order(
-            "count",
-            desc=True
-        ).range(start, end).execute()
-
-        if not res.data:
+        if text == "データがありません":
             await interaction.response.send_message("データがありません")
             return
 
-        text = (
-            f"🏆 連続出席日数ランキング\n"
-            f"（{start + 1}位 ～ {start + len(res.data)}位）\n\n"
-        )
-
-        for i, row in enumerate(res.data, start=start + 1):
-            user_id = int(row["user_id"])
-            member = interaction.guild.get_member(user_id)
-
-            if member:
-                name = member.display_name
-            else:
-                name = f"ID:{user_id}"
-
-            text += f"{i}位：{name} - {row['count']}日\n"
-
         await interaction.response.send_message(
             text[:1900],
+            view=RankingView(page),
             allowed_mentions=discord.AllowedMentions.none()
         )
 
     except Exception as e:
         print("RANKING ERROR:", repr(e), flush=True)
-
+        
 @bot.tree.command(
     name="自分の順位",
     description="自分の連続出席順位を見る",

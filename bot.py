@@ -580,6 +580,39 @@ async def myrank(interaction: discord.Interaction):
         print("MYRANK ERROR:", repr(e), flush=True)
 
 @bot.tree.command(
+    name="順位",
+    description="指定した人の連続出席順位を見る",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def member_rank(interaction: discord.Interaction, member: discord.Member):
+    try:
+        res = supabase.table("vc_count").select("*").order(
+            "count",
+            desc=True
+        ).execute()
+
+        if not res.data:
+            await interaction.response.send_message("データがありません")
+            return
+
+        for i, row in enumerate(res.data, start=1):
+            if int(row["user_id"]) == member.id:
+                await interaction.response.send_message(
+                    f"🏆 順位\n\n"
+                    f"対象：{member.display_name}\n"
+                    f"順位：{i}位\n"
+                    f"連続出席：{row['count']}日"
+                )
+                return
+
+        await interaction.response.send_message(
+            f"{member.display_name} の出席記録がありません"
+        )
+
+    except Exception as e:
+        print("MEMBER RANK ERROR:", repr(e), flush=True)
+
+@bot.tree.command(
     name="プロフィール",
     description="プロフィールを見る",
     guild=discord.Object(id=GUILD_ID)

@@ -488,7 +488,7 @@ async def create_ranking_text(guild, page: int):
 
 class RankingView(discord.ui.View):
     def __init__(self, page: int):
-        super().__init__(timeout=60)
+        super().__init__(timeout=None)
         self.page = page
 
     @discord.ui.button(label="前へ", style=discord.ButtonStyle.gray)

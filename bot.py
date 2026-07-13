@@ -786,6 +786,46 @@ async def remove_coins(
         print("REMOVE COINS ERROR:", repr(e), flush=True)
 
 @bot.tree.command(
+    name="コイン設定",
+    description="指定したメンバーの所持金を設定する",
+    guild=discord.Object(id=GUILD_ID)
+)
+@app_commands.default_permissions(administrator=True)
+async def set_coins(
+    interaction: discord.Interaction,
+    member: discord.Member,
+    amount: int
+):
+    try:
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message(
+                "このコマンドは運営専用です。",
+                ephemeral=True
+            )
+            return
+
+        if amount < 0:
+            await interaction.response.send_message(
+                "設定額は0以上にしてください",
+                ephemeral=True
+            )
+            return
+
+        supabase.table("coins").upsert({
+            "user_id": member.id,
+            "coins": amount,
+            "updated_at": str(get_today())
+        }).execute()
+
+        await interaction.response.send_message(
+            f"{member.display_name} の所持金を **{amount:,}コイン** に設定しました",
+            ephemeral=True
+        )
+
+    except Exception as e:
+        print("SET COINS ERROR:", repr(e), flush=True)
+
+@bot.tree.command(
     name="プロフィールパネル",
     description="プロフィール作成パネルを表示する",
     guild=discord.Object(id=GUILD_ID)

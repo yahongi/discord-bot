@@ -458,8 +458,8 @@ class AddCoinModal(Modal):
                 return
 
             try:
-                target_id = int(str(self.user_id))
-                amount = int(str(self.amount))
+                target_id = int(self.user_id.value)  
+                amount = int(self.amount.value)
             except ValueError:
                 await interaction.response.send_message(
                     "ユーザーIDと金額は数字で入力してください。",
@@ -517,7 +517,6 @@ class CoinManageView(discord.ui.View):
                 ephemeral=True
             )
             return False
-
         return True
 
     async def preparing(self, interaction: discord.Interaction):
@@ -526,17 +525,17 @@ class CoinManageView(discord.ui.View):
             ephemeral=True
         )
 
-@discord.ui.button(
-    label="個人に付与",
-    style=discord.ButtonStyle.green,
-    row=0
-)
-async def add_personal(
-    self,
-    interaction: discord.Interaction,
-    button: Button
-):
-    await interaction.response.send_modal(AddCoinModal())
+    @discord.ui.button(
+        label="個人に付与",
+        style=discord.ButtonStyle.green,
+        row=0
+    )
+    async def add_personal(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await interaction.response.send_modal(AddCoinModal())
 
     @discord.ui.button(
         label="個人から没収",
@@ -546,7 +545,7 @@ async def add_personal(
     async def remove_personal(
         self,
         interaction: discord.Interaction,
-        button: Button
+        button: discord.ui.Button
     ):
         await self.preparing(interaction)
 
@@ -558,7 +557,7 @@ async def add_personal(
     async def set_personal(
         self,
         interaction: discord.Interaction,
-        button: Button
+        button: discord.ui.Button
     ):
         await self.preparing(interaction)
 
@@ -570,7 +569,7 @@ async def add_personal(
     async def add_all(
         self,
         interaction: discord.Interaction,
-        button: Button
+        button: discord.ui.Button
     ):
         await self.preparing(interaction)
 
@@ -582,7 +581,7 @@ async def add_personal(
     async def remove_all(
         self,
         interaction: discord.Interaction,
-        button: Button
+        button: discord.ui.Button
     ):
         await self.preparing(interaction)
 
@@ -594,7 +593,7 @@ async def add_personal(
     async def set_all(
         self,
         interaction: discord.Interaction,
-        button: Button
+        button: discord.ui.Button
     ):
         await self.preparing(interaction)
 
@@ -606,14 +605,14 @@ async def add_personal(
     async def close_panel(
         self,
         interaction: discord.Interaction,
-        button: Button
+        button: discord.ui.Button
     ):
         await interaction.response.edit_message(
             content="コイン管理パネルを閉じました。",
             embed=None,
             view=None
         )
-
+        
 @bot.tree.command(
     name="出席簿",
     description="ユーザーの連続出席日数を見る",

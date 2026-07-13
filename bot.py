@@ -432,20 +432,15 @@ def update_vc(user_id):
     return count
 
 class AddCoinModal(Modal):
-    def __init__(self):
+    def __init__(self, member: discord.Member):
         super().__init__(title="個人にコイン付与")
-
-        self.user_id = TextInput(
-            label="対象ユーザーID",
-            placeholder="例：123456789012345678"
-        )
+        self.member = member
 
         self.amount = TextInput(
             label="付与金額",
             placeholder="例：1000"
         )
 
-        self.add_item(self.user_id)
         self.add_item(self.amount)
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -458,11 +453,10 @@ class AddCoinModal(Modal):
                 return
 
             try:
-                target_id = int(self.user_id.value)  
                 amount = int(self.amount.value)
             except ValueError:
                 await interaction.response.send_message(
-                    "ユーザーIDと金額は数字で入力してください。",
+                    "金額は数字で入力してください。",
                     ephemeral=True
                 )
                 return
@@ -474,31 +468,22 @@ class AddCoinModal(Modal):
                 )
                 return
 
-            member = interaction.guild.get_member(target_id)
-
-            if member is None:
-                await interaction.response.send_message(
-                    "そのユーザーはこのサーバーにいません。",
-                    ephemeral=True
-                )
-                return
-
             res = supabase.table("coins").select("*").eq(
                 "user_id",
-                target_id
+                self.member.id
             ).execute()
 
             current_coins = res.data[0]["coins"] if res.data else 0
             new_coins = current_coins + amount
 
             supabase.table("coins").upsert({
-                "user_id": target_id,
+                "user_id": self.member.id,
                 "coins": new_coins,
                 "updated_at": str(get_today())
             }).execute()
 
             await interaction.response.send_message(
-                f"{member.display_name} に **{amount:,}コイン** 付与しました\n"
+                f"{self.member.display_name} に **{amount:,}コイン** 付与しました\n"
                 f"現在の所持金：**{new_coins:,}コイン**",
                 ephemeral=True
             )

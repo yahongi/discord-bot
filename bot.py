@@ -431,14 +431,38 @@ def update_vc(user_id):
 
     return count
 
+class MemberSelect(discord.ui.UserSelect):
+    def __init__(self):
+        super().__init__(
+            placeholder="付与するメンバーを選択",
+            min_values=1,
+            max_values=1
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        member = self.values[0]
+
+        await interaction.response.send_modal(
+            AddCoinModal(member)
+        )
+
+
+class MemberSelectView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=300)
+        self.add_item(MemberSelect())
+
+
 class AddCoinModal(Modal):
-    def __init__(self, member: discord.Member):
+    def __init__(self, member):
         super().__init__(title="個人にコイン付与")
+
         self.member = member
 
         self.amount = TextInput(
             label="付与金額",
-            placeholder="例：1000"
+            placeholder="例：1000",
+            required=True
         )
 
         self.add_item(self.amount)
@@ -483,7 +507,8 @@ class AddCoinModal(Modal):
             }).execute()
 
             await interaction.response.send_message(
-                f"{self.member.display_name} に **{amount:,}コイン** 付与しました\n"
+                f"{self.member.display_name} に "
+                f"**{amount:,}コイン** 付与しました\n"
                 f"現在の所持金：**{new_coins:,}コイン**",
                 ephemeral=True
             )
@@ -491,17 +516,28 @@ class AddCoinModal(Modal):
         except Exception as e:
             print("ADD COIN MODAL ERROR:", repr(e), flush=True)
 
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    "コイン付与中にエラーが発生しました。",
+                    ephemeral=True
+                )
+
+
 class CoinManageView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=300)
 
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction
+    ) -> bool:
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message(
                 "このパネルは運営専用です。",
                 ephemeral=True
             )
             return False
+
         return True
 
     async def preparing(self, interaction: discord.Interaction):
@@ -520,7 +556,11 @@ class CoinManageView(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
-        await interaction.response.send_modal(AddCoinModal())
+        await interaction.response.send_message(
+            "付与するメンバーを選択してください。",
+            view=MemberSelectView(),
+            ephemeral=True
+        )
 
     @discord.ui.button(
         label="個人から没収",

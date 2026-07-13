@@ -735,6 +735,57 @@ async def add_coins(
         print("ADD COINS ERROR:", repr(e), flush=True)
 
 @bot.tree.command(
+    name="コイン没収",
+    description="指定したメンバーからコインを没収する",
+    guild=discord.Object(id=GUILD_ID)
+)
+@app_commands.default_permissions(administrator=True)
+async def remove_coins(
+    interaction: discord.Interaction,
+    member: discord.Member,
+    amount: int
+):
+    try:
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message(
+                "このコマンドは運営専用です。",
+                ephemeral=True
+            )
+            return
+
+        if amount <= 0:
+            await interaction.response.send_message(
+                "没収額は1以上にしてください",
+                ephemeral=True
+            )
+            return
+
+        res = supabase.table("coins").select("*").eq(
+            "user_id",
+            member.id
+        ).execute()
+
+        current_coins = res.data[0]["coins"] if res.data else 0
+
+        # マイナスにならないようにする
+        new_coins = max(0, current_coins - amount)
+
+        supabase.table("coins").upsert({
+            "user_id": member.id,
+            "coins": new_coins,
+            "updated_at": str(get_today())
+        }).execute()
+
+        await interaction.response.send_message(
+            f"{member.display_name} から **{amount:,}コイン** 没収しました\n"
+            f"現在の所持金：**{new_coins:,}コイン**",
+            ephemeral=True
+        )
+
+    except Exception as e:
+        print("REMOVE COINS ERROR:", repr(e), flush=True)
+
+@bot.tree.command(
     name="プロフィールパネル",
     description="プロフィール作成パネルを表示する",
     guild=discord.Object(id=GUILD_ID)

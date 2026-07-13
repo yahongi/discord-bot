@@ -446,12 +446,78 @@ class MemberSelect(discord.ui.UserSelect):
             AddCoinModal(member)
         )
 
+class RemoveCoinModal(Modal):
+    def __init__(self, member):
+        super().__init__(title="個人からコイン没収")
+
+        self.member = member
+
+        self.amount = TextInput(
+            label="没収金額",
+            placeholder="例：1000",
+            required=True
+        )
+
+        self.add_item(self.amount)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            amount = int(self.amount.value)
+
+            if amount <= 0:
+                await interaction.response.send_message(
+                    "没収金額は1以上にしてください。",
+                    ephemeral=True
+                )
+                return
+
+            res = supabase.table("coins").select("*").eq(
+                "user_id",
+                self.member.id
+            ).execute()
+
+            current = res.data[0]["coins"] if res.data else 0
+            new = max(0, current - amount)
+
+            supabase.table("coins").upsert({
+                "user_id": self.member.id,
+                "coins": new,
+                "updated_at": str(get_today())
+            }).execute()
+
+            await interaction.response.send_message(
+                f"{self.member.display_name} から **{amount:,}コイン** 没収しました\n"
+                f"現在の所持金：**{new:,}コイン**",
+                ephemeral=True
+            )
+
+        except Exception as e:
+            print("REMOVE COIN ERROR:", repr(e), flush=True)
 
 class MemberSelectView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=300)
         self.add_item(MemberSelect())
 
+class RemoveMemberSelect(discord.ui.UserSelect):
+    def __init__(self):
+        super().__init__(
+            placeholder="没収するメンバーを選択",
+            min_values=1,
+            max_values=1
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        member = self.values[0]
+        await interaction.response.send_modal(
+            RemoveCoinModal(member)
+        )
+
+
+class RemoveMemberSelectView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=300)
+        self.add_item(RemoveMemberSelect())
 
 class AddCoinModal(Modal):
     def __init__(self, member):
@@ -572,7 +638,11 @@ class CoinManageView(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
-        await self.preparing(interaction)
+        await interaction.response.send_message(
+            "没収するメンバーを選択してください。",
+            view=RemoveMemberSelectView(),
+            ephemeral=True
+        )
 
     @discord.ui.button(
         label="個人の金額設定",

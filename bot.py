@@ -513,6 +513,86 @@ class RemoveMemberSelect(discord.ui.UserSelect):
             RemoveCoinModal(member)
         )
 
+class SetCoinModal(Modal):
+    def __init__(self, member):
+        super().__init__(title="個人の所持金設定")
+
+        self.member = member
+
+        self.amount = TextInput(
+            label="設定金額",
+            placeholder="例：5000",
+            required=True
+        )
+
+        self.add_item(self.amount)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            if not interaction.user.guild_permissions.administrator:
+                await interaction.response.send_message(
+                    "この操作は運営専用です。",
+                    ephemeral=True
+                )
+                return
+
+            try:
+                amount = int(self.amount.value)
+            except ValueError:
+                await interaction.response.send_message(
+                    "金額は数字で入力してください。",
+                    ephemeral=True
+                )
+                return
+
+            if amount < 0:
+                await interaction.response.send_message(
+                    "設定金額は0以上にしてください。",
+                    ephemeral=True
+                )
+                return
+
+            supabase.table("coins").upsert({
+                "user_id": self.member.id,
+                "coins": amount,
+                "updated_at": str(get_today())
+            }).execute()
+
+            await interaction.response.send_message(
+                f"{self.member.display_name} の所持金を "
+                f"**{amount:,}コイン** に設定しました",
+                ephemeral=True
+            )
+
+        except Exception as e:
+            print("SET COIN MODAL ERROR:", repr(e), flush=True)
+
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    "所持金設定中にエラーが発生しました。",
+                    ephemeral=True
+                )
+
+class SetMemberSelect(discord.ui.UserSelect):
+    def __init__(self):
+        super().__init__(
+            placeholder="金額を設定するメンバーを選択",
+            min_values=1,
+            max_values=1
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        member = self.values[0]
+
+        await interaction.response.send_modal(
+            SetCoinModal(member)
+        )
+        
+
+class SetMemberSelectView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=300)
+        self.add_item(SetMemberSelect())
 
 class RemoveMemberSelectView(discord.ui.View):
     def __init__(self):
@@ -654,7 +734,11 @@ class CoinManageView(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
-        await self.preparing(interaction)
+        await interaction.response.send_message(
+            "金額を設定するメンバーを選択してください。",
+            view=SetMemberSelectView(),
+            ephemeral=True
+        )
 
     @discord.ui.button(
         label="全員に付与",

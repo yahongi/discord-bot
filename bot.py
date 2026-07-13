@@ -431,6 +431,114 @@ def update_vc(user_id):
 
     return count
 
+class CoinManageView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=300)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message(
+                "このパネルは運営専用です。",
+                ephemeral=True
+            )
+            return False
+
+        return True
+
+    async def preparing(self, interaction: discord.Interaction):
+        await interaction.response.send_message(
+            "この機能は現在準備中です。",
+            ephemeral=True
+        )
+
+    @discord.ui.button(
+        label="個人に付与",
+        style=discord.ButtonStyle.green,
+        row=0
+    )
+    async def add_personal(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+        await self.preparing(interaction)
+
+    @discord.ui.button(
+        label="個人から没収",
+        style=discord.ButtonStyle.red,
+        row=0
+    )
+    async def remove_personal(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+        await self.preparing(interaction)
+
+    @discord.ui.button(
+        label="個人の金額設定",
+        style=discord.ButtonStyle.blurple,
+        row=0
+    )
+    async def set_personal(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+        await self.preparing(interaction)
+
+    @discord.ui.button(
+        label="全員に付与",
+        style=discord.ButtonStyle.green,
+        row=1
+    )
+    async def add_all(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+        await self.preparing(interaction)
+
+    @discord.ui.button(
+        label="全員から没収",
+        style=discord.ButtonStyle.red,
+        row=1
+    )
+    async def remove_all(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+        await self.preparing(interaction)
+
+    @discord.ui.button(
+        label="全員の金額設定",
+        style=discord.ButtonStyle.blurple,
+        row=1
+    )
+    async def set_all(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+        await self.preparing(interaction)
+
+    @discord.ui.button(
+        label="閉じる",
+        style=discord.ButtonStyle.gray,
+        row=2
+    )
+    async def close_panel(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+        await interaction.response.edit_message(
+            content="コイン管理パネルを閉じました。",
+            embed=None,
+            view=None
+        )
+
 @bot.tree.command(
     name="出席簿",
     description="ユーザーの連続出席日数を見る",
@@ -824,6 +932,38 @@ async def set_coins(
 
     except Exception as e:
         print("SET COINS ERROR:", repr(e), flush=True)
+
+@bot.tree.command(
+    name="コイン管理",
+    description="運営用のコイン管理パネルを開く",
+    guild=discord.Object(id=GUILD_ID)
+)
+@app_commands.default_permissions(administrator=True)
+async def coin_manage(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message(
+            "このコマンドは運営専用です。",
+            ephemeral=True
+        )
+        return
+
+    embed = discord.Embed(
+        title="コイン管理",
+        description=(
+            "**個人操作**\n"
+            "個人への付与・没収・金額設定\n\n"
+            "**全体操作**\n"
+            "全員への付与・没収・金額設定\n\n"
+            "下のボタンから操作を選択してください。"
+        ),
+        color=0xf5b642
+    )
+
+    await interaction.response.send_message(
+        embed=embed,
+        view=CoinManageView(),
+        ephemeral=True
+    )
 
 @bot.tree.command(
     name="プロフィールパネル",

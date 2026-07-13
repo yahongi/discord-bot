@@ -693,6 +693,48 @@ async def balance(interaction: discord.Interaction):
         print("BALANCE ERROR:", repr(e), flush=True)
 
 @bot.tree.command(
+    name="コイン付与",
+    description="指定したメンバーにコインを付与する",
+    guild=discord.Object(id=GUILD_ID)
+)
+@app_commands.default_permissions(administrator=True)
+async def add_coins(
+    interaction: discord.Interaction,
+    member: discord.Member,
+    amount: int
+):
+    try:
+        if amount <= 0:
+            await interaction.response.send_message(
+                "付与額は1以上にしてください",
+                ephemeral=True
+            )
+            return
+
+        res = supabase.table("coins").select("*").eq(
+            "user_id",
+            member.id
+        ).execute()
+
+        current_coins = res.data[0]["coins"] if res.data else 0
+        new_coins = current_coins + amount
+
+        supabase.table("coins").upsert({
+            "user_id": member.id,
+            "coins": new_coins,
+            "updated_at": str(get_today())
+        }).execute()
+
+        await interaction.response.send_message(
+            f"{member.display_name} に **{amount:,}コイン** 付与しました\n"
+            f"現在の所持金：**{new_coins:,}コイン**",
+            ephemeral=True
+        )
+
+    except Exception as e:
+        print("ADD COINS ERROR:", repr(e), flush=True)
+
+@bot.tree.command(
     name="プロフィールパネル",
     description="プロフィール作成パネルを表示する",
     guild=discord.Object(id=GUILD_ID)

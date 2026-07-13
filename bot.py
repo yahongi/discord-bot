@@ -672,6 +672,27 @@ async def profile_view(interaction: discord.Interaction, member: discord.Member 
     await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(
+    name="所持金",
+    description="自分の所持コインを確認する",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def balance(interaction: discord.Interaction):
+    try:
+        res = supabase.table("coins").select("*").eq(
+            "user_id",
+            interaction.user.id
+        ).execute()
+
+        coins = res.data[0]["coins"] if res.data else 0
+
+        await interaction.response.send_message(
+            f"所持金：**{coins:,}コイン**"
+        )
+
+    except Exception as e:
+        print("BALANCE ERROR:", repr(e), flush=True)
+
+@bot.tree.command(
     name="プロフィールパネル",
     description="プロフィール作成パネルを表示する",
     guild=discord.Object(id=GUILD_ID)

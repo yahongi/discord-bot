@@ -515,7 +515,7 @@ class RemoveMemberSelect(discord.ui.UserSelect):
 
 class SetCoinModal(Modal):
     def __init__(self, member):
-        super().__init__(title="個人の所持金設定")
+        super().__init__(title="個人の所持フラワー設定")
 
         self.member = member
 
@@ -1015,7 +1015,7 @@ class AddCoinModal(Modal):
             await interaction.response.send_message(
                 f"{self.member.display_name} に "
                 f"**{amount:,}フラワー** 付与しました\n"
-                f"現在の所持金：**{new_coins:,}フラワー**",
+                f"現在の所持フラワー：**{new_coins:,}フラワー**",
                 ephemeral=True
             )
 

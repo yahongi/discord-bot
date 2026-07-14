@@ -1025,13 +1025,13 @@ class CoinManageView(discord.ui.View):
         row=1
     )
     async def remove_all(
-    self,
-    interaction: discord.Interaction,
-    button: discord.ui.Button
-):
-    await interaction.response.send_modal(
-        RemoveAllCoinModal()
-    )
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await interaction.response.send_modal(
+            RemoveAllCoinModal()
+        )
 
     @discord.ui.button(
         label="全員の金額設定",

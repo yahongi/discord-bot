@@ -702,6 +702,142 @@ class AddAllConfirmView(discord.ui.View):
 
         self.stop()
 
+class RemoveAllCoinModal(Modal):
+    def __init__(self):
+        super().__init__(title="全員からコイン没収")
+
+        self.amount = TextInput(
+            label="没収金額",
+            placeholder="例：1000",
+            required=True
+        )
+
+        self.add_item(self.amount)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            if not interaction.user.guild_permissions.administrator:
+                await interaction.response.send_message(
+                    "この操作は運営専用です。",
+                    ephemeral=True
+                )
+                return
+
+            try:
+                amount = int(self.amount.value)
+            except ValueError:
+                await interaction.response.send_message(
+                    "金額は数字で入力してください。",
+                    ephemeral=True
+                )
+                return
+
+            if amount <= 0:
+                await interaction.response.send_message(
+                    "没収金額は1以上にしてください。",
+                    ephemeral=True
+                )
+                return
+
+            await interaction.response.send_message(
+                f"全員から **{amount:,}コイン** 没収します。\n"
+                "所持金は0未満になりません。\n"
+                "本当に実行しますか？",
+                view=RemoveAllConfirmView(amount),
+                ephemeral=True
+            )
+
+        except Exception as e:
+            print("REMOVE ALL COIN MODAL ERROR:", repr(e), flush=True)
+
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    "確認画面の表示中にエラーが発生しました。",
+                    ephemeral=True
+                )
+
+
+class RemoveAllConfirmView(discord.ui.View):
+    def __init__(self, amount: int):
+        super().__init__(timeout=60)
+        self.amount = amount
+
+    @discord.ui.button(
+        label="実行",
+        style=discord.ButtonStyle.red
+    )
+    async def confirm(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message(
+                "この操作は運営専用です。",
+                ephemeral=True
+            )
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            members = [
+                member
+                for member in interaction.guild.members
+                if not member.bot
+            ]
+
+            updated_count = 0
+
+            for member in members:
+                res = supabase.table("coins").select("*").eq(
+                    "user_id",
+                    member.id
+                ).execute()
+
+                current_coins = res.data[0]["coins"] if res.data else 0
+                new_coins = max(0, current_coins - self.amount)
+
+                supabase.table("coins").upsert({
+                    "user_id": member.id,
+                    "coins": new_coins,
+                    "updated_at": str(get_today())
+                }).execute()
+
+                updated_count += 1
+
+            await interaction.followup.send(
+                f"全員から **{self.amount:,}コイン** 没収しました。\n"
+                f"対象人数：**{updated_count}人**",
+                ephemeral=True
+            )
+
+            self.stop()
+
+        except Exception as e:
+            print("REMOVE ALL COINS ERROR:", repr(e), flush=True)
+
+            await interaction.followup.send(
+                "全員からのコイン没収中にエラーが発生しました。",
+                ephemeral=True
+            )
+
+    @discord.ui.button(
+        label="キャンセル",
+        style=discord.ButtonStyle.gray
+    )
+    async def cancel(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await interaction.response.edit_message(
+            content="全員からのコイン没収をキャンセルしました。",
+            view=None
+        )
+
+        self.stop()
+
 class SetMemberSelect(discord.ui.UserSelect):
     def __init__(self):
         super().__init__(
@@ -889,11 +1025,13 @@ class CoinManageView(discord.ui.View):
         row=1
     )
     async def remove_all(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-        await self.preparing(interaction)
+    self,
+    interaction: discord.Interaction,
+    button: discord.ui.Button
+):
+    await interaction.response.send_modal(
+        RemoveAllCoinModal()
+    )
 
     @discord.ui.button(
         label="全員の金額設定",

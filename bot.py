@@ -448,12 +448,12 @@ class MemberSelect(discord.ui.UserSelect):
 
 class RemoveCoinModal(Modal):
     def __init__(self, member):
-        super().__init__(title="個人からコイン没収")
+        super().__init__(title="個人からフラワー没収")
 
         self.member = member
 
         self.amount = TextInput(
-            label="没収金額",
+            label="没収フラワー",
             placeholder="例：1000",
             required=True
         )
@@ -466,7 +466,7 @@ class RemoveCoinModal(Modal):
 
             if amount <= 0:
                 await interaction.response.send_message(
-                    "没収金額は1以上にしてください。",
+                    "没収フラワーは1以上にしてください。",
                     ephemeral=True
                 )
                 return
@@ -486,8 +486,8 @@ class RemoveCoinModal(Modal):
             }).execute()
 
             await interaction.response.send_message(
-                f"{self.member.display_name} から **{amount:,}コイン** 没収しました\n"
-                f"現在の所持金：**{new:,}コイン**",
+                f"{self.member.display_name} から **{amount:,}フラワー** 没収しました\n"
+                f"現在の所持フラワー：**{new:,}フラワー**",
                 ephemeral=True
             )
 
@@ -520,7 +520,7 @@ class SetCoinModal(Modal):
         self.member = member
 
         self.amount = TextInput(
-            label="設定金額",
+            label="設定フラワー",
             placeholder="例：5000",
             required=True
         )
@@ -540,14 +540,14 @@ class SetCoinModal(Modal):
                 amount = int(self.amount.value)
             except ValueError:
                 await interaction.response.send_message(
-                    "金額は数字で入力してください。",
+                    "フラワーは数字で入力してください。",
                     ephemeral=True
                 )
                 return
 
             if amount < 0:
                 await interaction.response.send_message(
-                    "設定金額は0以上にしてください。",
+                    "設定フラワーは0以上にしてください。",
                     ephemeral=True
                 )
                 return
@@ -559,8 +559,8 @@ class SetCoinModal(Modal):
             }).execute()
 
             await interaction.response.send_message(
-                f"{self.member.display_name} の所持金を "
-                f"**{amount:,}コイン** に設定しました",
+                f"{self.member.display_name} の所持フラワーを "
+                f"**{amount:,}フラワー** に設定しました",
                 ephemeral=True
             )
 
@@ -569,16 +569,16 @@ class SetCoinModal(Modal):
 
             if not interaction.response.is_done():
                 await interaction.response.send_message(
-                    "所持金設定中にエラーが発生しました。",
+                    "所持フラワー設定中にエラーが発生しました。",
                     ephemeral=True
                 )
 
 class AddAllCoinModal(Modal):
     def __init__(self):
-        super().__init__(title="全員にコイン付与")
+        super().__init__(title="全員にフラワー付与")
 
         self.amount = TextInput(
-            label="付与金額",
+            label="付与フラワー",
             placeholder="例：1000",
             required=True
         )
@@ -598,20 +598,20 @@ class AddAllCoinModal(Modal):
                 amount = int(self.amount.value)
             except ValueError:
                 await interaction.response.send_message(
-                    "金額は数字で入力してください。",
+                    "フラワーは数字で入力してください。",
                     ephemeral=True
                 )
                 return
 
             if amount <= 0:
                 await interaction.response.send_message(
-                    "付与金額は1以上にしてください。",
+                    "付与フラワーは1以上にしてください。",
                     ephemeral=True
                 )
                 return
 
             await interaction.response.send_message(
-                f"全員に **{amount:,}コイン** 付与します。\n"
+                f"全員に **{amount:,}フラワー** 付与します。\n"
                 "本当に実行しますか？",
                 view=AddAllConfirmView(amount),
                 ephemeral=True
@@ -671,7 +671,7 @@ class AddAllConfirmView(discord.ui.View):
                 updated_count += 1
 
             await interaction.followup.send(
-                f"全員に **{self.amount:,}コイン** 付与しました。\n"
+                f"全員に **{self.amount:,}フラワー** 付与しました。\n"
                 f"対象人数：**{updated_count}人**",
                 ephemeral=True
             )
@@ -682,7 +682,7 @@ class AddAllConfirmView(discord.ui.View):
             print("ADD ALL COINS ERROR:", repr(e), flush=True)
 
             await interaction.followup.send(
-                "全員へのコイン付与中にエラーが発生しました。",
+                "全員へのフラワー付与中にエラーが発生しました。",
                 ephemeral=True
             )
 
@@ -696,7 +696,7 @@ class AddAllConfirmView(discord.ui.View):
         button: discord.ui.Button
     ):
         await interaction.response.edit_message(
-            content="全員へのコイン付与をキャンセルしました。",
+            content="全員へのフラワー付与をキャンセルしました。",
             view=None
         )
 
@@ -704,10 +704,10 @@ class AddAllConfirmView(discord.ui.View):
 
 class RemoveAllCoinModal(Modal):
     def __init__(self):
-        super().__init__(title="全員からコイン没収")
+        super().__init__(title="全員からフラワー没収")
 
         self.amount = TextInput(
-            label="没収金額",
+            label="没収フラワー",
             placeholder="例：1000",
             required=True
         )
@@ -727,21 +727,21 @@ class RemoveAllCoinModal(Modal):
                 amount = int(self.amount.value)
             except ValueError:
                 await interaction.response.send_message(
-                    "金額は数字で入力してください。",
+                    "フラワーは数字で入力してください。",
                     ephemeral=True
                 )
                 return
 
             if amount <= 0:
                 await interaction.response.send_message(
-                    "没収金額は1以上にしてください。",
+                    "没収フラワーは1以上にしてください。",
                     ephemeral=True
                 )
                 return
 
             await interaction.response.send_message(
-                f"全員から **{amount:,}コイン** 没収します。\n"
-                "所持金は0未満になりません。\n"
+                f"全員から **{amount:,}フラワー** 没収します。\n"
+                "所持フラワーは0未満になりません。\n"
                 "本当に実行しますか？",
                 view=RemoveAllConfirmView(amount),
                 ephemeral=True
@@ -807,7 +807,7 @@ class RemoveAllConfirmView(discord.ui.View):
                 updated_count += 1
 
             await interaction.followup.send(
-                f"全員から **{self.amount:,}コイン** 没収しました。\n"
+                f"全員から **{self.amount:,}フラワー** 没収しました。\n"
                 f"対象人数：**{updated_count}人**",
                 ephemeral=True
             )
@@ -818,7 +818,7 @@ class RemoveAllConfirmView(discord.ui.View):
             print("REMOVE ALL COINS ERROR:", repr(e), flush=True)
 
             await interaction.followup.send(
-                "全員からのコイン没収中にエラーが発生しました。",
+                "全員からのフラワー没収中にエラーが発生しました。",
                 ephemeral=True
             )
 
@@ -832,7 +832,7 @@ class RemoveAllConfirmView(discord.ui.View):
         button: discord.ui.Button
     ):
         await interaction.response.edit_message(
-            content="全員からのコイン没収をキャンセルしました。",
+            content="全員からのフラワー没収をキャンセルしました。",
             view=None
         )
 
@@ -843,7 +843,7 @@ class RemoveAllConfirmView(discord.ui.View):
 class SetMemberSelect(discord.ui.UserSelect):
     def __init__(self):
         super().__init__(
-            placeholder="金額を設定するメンバーを選択",
+            placeholder="フラワーを設定するメンバーを選択",
             min_values=1,
             max_values=1
         )
@@ -857,10 +857,10 @@ class SetMemberSelect(discord.ui.UserSelect):
         
 class SetAllCoinModal(Modal):
     def __init__(self):
-        super().__init__(title="全員の所持金設定")
+        super().__init__(title="全員の所持フラワー設定")
 
         self.amount = TextInput(
-            label="設定金額",
+            label="設定フラワー",
             placeholder="例：5000",
             required=True
         )
@@ -880,7 +880,7 @@ class SetAllCoinModal(Modal):
                 amount = int(self.amount.value)
             except ValueError:
                 await interaction.response.send_message(
-                    "金額は数字で入力してください。",
+                    "フラワーは数字で入力してください。",
                     ephemeral=True
                 )
                 return
@@ -893,7 +893,7 @@ class SetAllCoinModal(Modal):
                 return
 
             await interaction.response.send_message(
-                f"全員の所持金を **{amount:,}コイン** に設定します。\n"
+                f"全員の所持フラワーを **{amount:,}フラワー** に設定します。\n"
                 "本当に実行しますか？",
                 view=SetAllConfirmView(amount),
                 ephemeral=True
@@ -931,7 +931,7 @@ class SetAllConfirmView(discord.ui.View):
             }).execute()
 
         await interaction.followup.send(
-            f"全員の所持金を **{self.amount:,}コイン** に設定しました。",
+            f"全員の所持フラワーを **{self.amount:,}フラワー** に設定しました。",
             ephemeral=True
         )
 
@@ -961,12 +961,12 @@ class RemoveMemberSelectView(discord.ui.View):
 
 class AddCoinModal(Modal):
     def __init__(self, member):
-        super().__init__(title="個人にコイン付与")
+        super().__init__(title="個人にフラワー付与")
 
         self.member = member
 
         self.amount = TextInput(
-            label="付与金額",
+            label="付与フラワー",
             placeholder="例：1000",
             required=True
         )
@@ -986,14 +986,14 @@ class AddCoinModal(Modal):
                 amount = int(self.amount.value)
             except ValueError:
                 await interaction.response.send_message(
-                    "金額は数字で入力してください。",
+                    "フラワーは数字で入力してください。",
                     ephemeral=True
                 )
                 return
 
             if amount <= 0:
                 await interaction.response.send_message(
-                    "付与金額は1以上にしてください。",
+                    "付与フラワーは1以上にしてください。",
                     ephemeral=True
                 )
                 return
@@ -1014,8 +1014,8 @@ class AddCoinModal(Modal):
 
             await interaction.response.send_message(
                 f"{self.member.display_name} に "
-                f"**{amount:,}コイン** 付与しました\n"
-                f"現在の所持金：**{new_coins:,}コイン**",
+                f"**{amount:,}フラワー** 付与しました\n"
+                f"現在の所持金：**{new_coins:,}フラワー**",
                 ephemeral=True
             )
 
@@ -1024,7 +1024,7 @@ class AddCoinModal(Modal):
 
             if not interaction.response.is_done():
                 await interaction.response.send_message(
-                    "コイン付与中にエラーが発生しました。",
+                    "フラワー付与中にエラーが発生しました。",
                     ephemeral=True
                 )
 
@@ -1085,7 +1085,7 @@ class CoinManageView(discord.ui.View):
         )
 
     @discord.ui.button(
-        label="個人の金額設定",
+        label="個人のフラワー設定",
         style=discord.ButtonStyle.blurple,
         row=0
     )
@@ -1095,7 +1095,7 @@ class CoinManageView(discord.ui.View):
         button: discord.ui.Button
     ):
         await interaction.response.send_message(
-            "金額を設定するメンバーを選択してください。",
+            "フラワーを設定するメンバーを選択してください。",
             view=SetMemberSelectView(),
             ephemeral=True
         )
@@ -1129,7 +1129,7 @@ class CoinManageView(discord.ui.View):
         )
 
     @discord.ui.button(
-        label="全員の金額設定",
+        label="全員のフラワー設定",
         style=discord.ButtonStyle.blurple,
         row=1
     )
@@ -1153,7 +1153,7 @@ class CoinManageView(discord.ui.View):
         button: discord.ui.Button
     ):
         await interaction.response.edit_message(
-            content="コイン管理パネルを閉じました。",
+            content="フラワー管理パネルを閉じました。",
             embed=None,
             view=None
         )

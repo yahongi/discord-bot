@@ -573,6 +573,135 @@ class SetCoinModal(Modal):
                     ephemeral=True
                 )
 
+class AddAllCoinModal(Modal):
+    def __init__(self):
+        super().__init__(title="全員にコイン付与")
+
+        self.amount = TextInput(
+            label="付与金額",
+            placeholder="例：1000",
+            required=True
+        )
+
+        self.add_item(self.amount)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            if not interaction.user.guild_permissions.administrator:
+                await interaction.response.send_message(
+                    "この操作は運営専用です。",
+                    ephemeral=True
+                )
+                return
+
+            try:
+                amount = int(self.amount.value)
+            except ValueError:
+                await interaction.response.send_message(
+                    "金額は数字で入力してください。",
+                    ephemeral=True
+                )
+                return
+
+            if amount <= 0:
+                await interaction.response.send_message(
+                    "付与金額は1以上にしてください。",
+                    ephemeral=True
+                )
+                return
+
+            await interaction.response.send_message(
+                f"全員に **{amount:,}コイン** 付与します。\n"
+                "本当に実行しますか？",
+                view=AddAllConfirmView(amount),
+                ephemeral=True
+            )
+
+        except Exception as e:
+            print("ADD ALL COIN MODAL ERROR:", repr(e), flush=True)
+
+
+class AddAllConfirmView(discord.ui.View):
+    def __init__(self, amount: int):
+        super().__init__(timeout=60)
+        self.amount = amount
+
+    @discord.ui.button(
+        label="実行",
+        style=discord.ButtonStyle.green
+    )
+    async def confirm(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        try:
+            if not interaction.user.guild_permissions.administrator:
+                await interaction.response.send_message(
+                    "この操作は運営専用です。",
+                    ephemeral=True
+                )
+                return
+
+            await interaction.response.defer(ephemeral=True)
+
+            members = [
+                member
+                for member in interaction.guild.members
+                if not member.bot
+            ]
+
+            updated_count = 0
+
+            for member in members:
+                res = supabase.table("coins").select("*").eq(
+                    "user_id",
+                    member.id
+                ).execute()
+
+                current_coins = res.data[0]["coins"] if res.data else 0
+                new_coins = current_coins + self.amount
+
+                supabase.table("coins").upsert({
+                    "user_id": member.id,
+                    "coins": new_coins,
+                    "updated_at": str(get_today())
+                }).execute()
+
+                updated_count += 1
+
+            await interaction.followup.send(
+                f"全員に **{self.amount:,}コイン** 付与しました。\n"
+                f"対象人数：**{updated_count}人**",
+                ephemeral=True
+            )
+
+            self.stop()
+
+        except Exception as e:
+            print("ADD ALL COINS ERROR:", repr(e), flush=True)
+
+            await interaction.followup.send(
+                "全員へのコイン付与中にエラーが発生しました。",
+                ephemeral=True
+            )
+
+    @discord.ui.button(
+        label="キャンセル",
+        style=discord.ButtonStyle.gray
+    )
+    async def cancel(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await interaction.response.edit_message(
+            content="全員へのコイン付与をキャンセルしました。",
+            view=None
+        )
+
+        self.stop()
+
 class SetMemberSelect(discord.ui.UserSelect):
     def __init__(self):
         super().__init__(
@@ -750,7 +879,9 @@ class CoinManageView(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
-        await self.preparing(interaction)
+        await interaction.response.send_modal(
+            AddAllCoinModal()
+        )
 
     @discord.ui.button(
         label="全員から没収",

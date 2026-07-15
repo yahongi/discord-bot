@@ -24,6 +24,7 @@ LOG_CHANNEL_ID = 1513382077771546886
 
 MALE_INTRO_CHANNEL_ID = 1463538621293396152
 FEMALE_INTRO_CHANNEL_ID = 1463538649915330601
+FLOWER_LOG_CHANNEL_ID = 1526955808317898762
 
 INTRO_TEMPLATE = """【名前】
 【年齢】
@@ -1385,6 +1386,137 @@ async def flower_ranking(
 
     except Exception as e:
         print("FLOWER RANKING ERROR:", repr(e), flush=True)
+
+@bot.tree.command(
+    name="フラワー送金",
+    description="指定したメンバーにフラワーを送る",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def flower_transfer(
+    interaction: discord.Interaction,
+    member: discord.Member,
+    amount: int
+):
+    try:
+        if member.bot:
+            await interaction.response.send_message(
+                "Botには送金できません。",
+                ephemeral=True
+            )
+            return
+
+        if member.id == interaction.user.id:
+            await interaction.response.send_message(
+                "自分自身には送金できません。",
+                ephemeral=True
+            )
+            return
+
+        if amount <= 0:
+            await interaction.response.send_message(
+                "送金額は1以上にしてください。",
+                ephemeral=True
+            )
+            return
+
+        sender_res = supabase.table("coins").select("*").eq(
+            "user_id",
+            interaction.user.id
+        ).execute()
+
+        sender_coins = sender_res.data[0]["coins"] if sender_res.data else 0
+
+        if sender_coins < amount:
+            await interaction.response.send_message(
+                f"フラワーが足りません。\n"
+                f"現在の所持フラワー：**{sender_coins:,}フラワー**",
+                ephemeral=True
+            )
+            return
+
+        receiver_res = supabase.table("coins").select("*").eq(
+            "user_id",
+            member.id
+        ).execute()
+
+        receiver_coins = receiver_res.data[0]["coins"] if receiver_res.data else 0
+
+        new_sender_coins = sender_coins - amount
+        new_receiver_coins = receiver_coins + amount
+
+        supabase.table("coins").upsert({
+            "user_id": interaction.user.id,
+            "coins": new_sender_coins,
+            "updated_at": str(get_today())
+        }).execute()
+
+        supabase.table("coins").upsert({
+            "user_id": member.id,
+            "coins": new_receiver_coins,
+            "updated_at": str(get_today())
+        }).execute()
+
+        await interaction.response.send_message(
+            f"{member.display_name} に **{amount:,}フラワー** 送金しました。\n"
+            f"現在の所持フラワー：**{new_sender_coins:,}フラワー**"
+        )
+
+            log_channel = interaction.guild.get_channel(FLOWER_LOG_CHANNEL_ID)
+
+        if log_channel:
+            embed = discord.Embed(
+                title="フラワー送金履歴",
+                color=discord.Color.blurple()
+            )
+
+            embed.add_field(
+                name="送金者",
+                value=f"{interaction.user.display_name}\nID：{interaction.user.id}",
+                inline=False
+            )
+
+            embed.add_field(
+                name="受取人",
+                value=f"{member.display_name}\nID：{member.id}",
+                inline=False
+            )
+
+            embed.add_field(
+                name="送金額",
+                value=f"{amount:,}フラワー",
+                inline=False
+            )
+
+            embed.add_field(
+                name="送金者の残高",
+                value=f"{new_sender_coins:,}フラワー",
+                inline=True
+            )
+
+            embed.add_field(
+                name="受取人の残高",
+                value=f"{new_receiver_coins:,}フラワー",
+                inline=True
+            )
+
+            embed.add_field(
+                name="日時",
+                value=datetime.now(
+                    pytz.timezone("Asia/Tokyo")
+                ).strftime("%Y/%m/%d %H:%M:%S"),
+                inline=False
+            )
+
+            await log_channel.send(embed=embed)
+
+    except Exception as e:
+        print("FLOWER TRANSFER ERROR:", repr(e), flush=True)
+
+        if not interaction.response.is_done():
+            await interaction.response.send_message(
+                "送金中にエラーが発生しました。",
+                ephemeral=True
+            )
         
 @bot.tree.command(
     name="自分の順位",

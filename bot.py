@@ -1461,7 +1461,7 @@ async def flower_transfer(
             f"現在の所持フラワー：**{new_sender_coins:,}フラワー**"
         )
 
-            log_channel = interaction.guild.get_channel(FLOWER_LOG_CHANNEL_ID)
+        log_channel = interaction.guild.get_channel(FLOWER_LOG_CHANNEL_ID)
 
         if log_channel:
             embed = discord.Embed(

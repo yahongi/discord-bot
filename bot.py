@@ -9,6 +9,8 @@ from discord.ui import View, Button, Modal, TextInput
 from datetime import datetime, date, timedelta
 import pytz
 from supabase import create_client
+import random
+import asyncio
 
 def get_today():
     tz = pytz.timezone("Asia/Tokyo")
@@ -25,6 +27,76 @@ LOG_CHANNEL_ID = 1513382077771546886
 MALE_INTRO_CHANNEL_ID = 1463538621293396152
 FEMALE_INTRO_CHANNEL_ID = 1463538649915330601
 FLOWER_LOG_CHANNEL_ID = 1526955808317898762
+TWO_MATCH_MULTIPLIERS = {
+    1: 1.1,
+    2: 1.2,
+    3: 1.3,
+    4: 1.4,
+    5: 1.5,
+    6: 1.6,
+    7: 1.7,
+    8: 1.8,
+    9: 1.9
+}
+
+THREE_MATCH_MULTIPLIERS = {
+    1: 2.0,
+    2: 2.5,
+    3: 3.0,
+    4: 4.0,
+    5: 5.0,
+    6: 6.0,
+    8: 8.0,
+    9: 9.0
+}
+
+
+def judge_slot_result(reels: list[int], bet: int):
+    first, second, third = reels
+
+    # 3つ揃い
+    if first == second == third:
+        if first == 7:
+            return {
+                "type": "jackpot",
+                "payout": 0,
+                "text": "777 ジャックポット"
+            }
+
+        multiplier = THREE_MATCH_MULTIPLIERS[first]
+        payout = int(bet * multiplier)
+
+        return {
+            "type": "three",
+            "payout": payout,
+            "text": f"{first}が3つ揃い・{multiplier:g}倍"
+        }
+
+    # 2つ揃い
+    matched_number = None
+
+    if first == second:
+        matched_number = first
+    elif first == third:
+        matched_number = first
+    elif second == third:
+        matched_number = second
+
+    if matched_number is not None:
+        multiplier = TWO_MATCH_MULTIPLIERS[matched_number]
+        payout = int(bet * multiplier)
+
+        return {
+            "type": "two",
+            "payout": payout,
+            "text": f"{matched_number}が2つ揃い・{multiplier:g}倍"
+        }
+
+    return {
+        "type": "lose",
+        "payout": 0,
+        "text": "ハズレ"
+    }
 
 INTRO_TEMPLATE = """【名前】
 【年齢】
@@ -52,6 +124,146 @@ def keep_alive():
     Thread(target=run_web).start()
 
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+
+@bot.tree.command(
+    name="スロット",
+    description="フラワーを賭けてスロットを回す",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def slot(
+    interaction: discord.Interaction,
+    bet: int
+):
+    await interaction.response.defer()
+
+    try:
+        if bet <= 0:
+            await interaction.followup.send(
+                "BET額は1以上にしてください。",
+                ephemeral=True
+            )
+            return
+
+        balance_res = supabase.table("coins").select("*").eq(
+            "user_id",
+            interaction.user.id
+        ).execute()
+
+        current_flower = (
+            balance_res.data[0]["coins"]
+            if balance_res.data
+            else 0
+        )
+
+        if current_flower < bet:
+            await interaction.followup.send(
+                f"フラワーが足りません。\n"
+                f"必要：**{bet:,}フラワー**\n"
+                f"現在：**{current_flower:,}フラワー**",
+                ephemeral=True
+            )
+            return
+
+        # 最初にBET分を引く
+        after_bet = current_flower - bet
+
+        supabase.table("coins").upsert({
+            "user_id": interaction.user.id,
+            "coins": after_bet,
+            "updated_at": str(get_today())
+        }).execute()
+
+        # 最終結果を先に決める
+        reels = [
+            random.randint(1, 9),
+            random.randint(1, 9),
+            random.randint(1, 9)
+        ]
+
+        embed = discord.Embed(
+            title="スロット回転中",
+            description=(
+                f"BET：**{bet:,}フラワー**\n\n"
+                "` ? `｜` ? `｜` ? `"
+            ),
+            color=discord.Color.gold()
+        )
+
+        await interaction.edit_original_response(embed=embed)
+        await asyncio.sleep(0.8)
+
+        embed.description = (
+            f"BET：**{bet:,}フラワー**\n\n"
+            f"` {reels[0]} `｜` ? `｜` ? `"
+        )
+
+        await interaction.edit_original_response(embed=embed)
+        await asyncio.sleep(0.8)
+
+        embed.description = (
+            f"BET：**{bet:,}フラワー**\n\n"
+            f"` {reels[0]} `｜` {reels[1]} `｜` ? `"
+        )
+
+        await interaction.edit_original_response(embed=embed)
+        await asyncio.sleep(0.8)
+
+        result = judge_slot_result(reels, bet)
+
+        payout = result["payout"]
+        final_flower = after_bet + payout
+
+        supabase.table("coins").upsert({
+            "user_id": interaction.user.id,
+            "coins": final_flower,
+            "updated_at": str(get_today())
+        }).execute()
+
+        profit = payout - bet
+
+        if result["type"] == "lose":
+            title = "スロット結果：ハズレ"
+            color = discord.Color.red()
+        elif result["type"] == "two":
+            title = "スロット結果：2つ揃い"
+            color = discord.Color.blue()
+        elif result["type"] == "three":
+            title = "スロット結果：3つ揃い"
+            color = discord.Color.green()
+        else:
+            title = "スロット結果：ジャックポット"
+            color = discord.Color.gold()
+
+        result_text = (
+            f"` {reels[0]} `｜` {reels[1]} `｜` {reels[2]} `\n\n"
+            f"結果：**{result['text']}**\n"
+            f"BET：**{bet:,}フラワー**\n"
+            f"配当：**{payout:,}フラワー**\n"
+            f"損益：**{profit:+,}フラワー**\n\n"
+            f"現在の所持フラワー：**{final_flower:,}フラワー**"
+        )
+
+        result_embed = discord.Embed(
+            title=title,
+            description=result_text,
+            color=color
+        )
+
+        await interaction.edit_original_response(
+            embed=result_embed
+        )
+
+    except Exception as e:
+        print("SLOT ERROR:", repr(e), flush=True)
+
+        try:
+            await interaction.followup.send(
+                "スロット処理中にエラーが発生しました。",
+                ephemeral=True
+            )
+        except Exception:
+            pass
 
 class ProfileModal(Modal):
 

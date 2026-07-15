@@ -1273,6 +1273,36 @@ async def ranking(
 
     except Exception as e:
         print("RANKING ERROR:", repr(e), flush=True)
+
+@bot.tree.command(
+    name="フラワーランキング",
+    description="所持フラワーランキングをページごとに見る",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def flower_ranking(
+    interaction: discord.Interaction,
+    page: int = 1
+):
+    try:
+        text = await create_flower_ranking_text(
+            interaction.guild,
+            page
+        )
+
+        if text == "データがありません":
+            await interaction.response.send_message(
+                "データがありません"
+            )
+            return
+
+        await interaction.response.send_message(
+            text[:1900],
+            view=FlowerRankingView(page),
+            allowed_mentions=discord.AllowedMentions.none()
+        )
+
+    except Exception as e:
+        print("FLOWER RANKING ERROR:", repr(e), flush=True)
         
 @bot.tree.command(
     name="自分の順位",

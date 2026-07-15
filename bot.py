@@ -1252,6 +1252,88 @@ class RankingView(discord.ui.View):
             content=text,
             view=self
         )
+
+async def create_flower_ranking_text(guild, page: int):
+    if page < 1:
+        page = 1
+
+    start = (page - 1) * 10
+    end = start + 9
+
+    res = supabase.table("coins").select("*").order(
+        "coins",
+        desc=True
+    ).range(start, end).execute()
+
+    if not res.data:
+        return "データがありません"
+
+    text = (
+        f"フラワーランキング\n"
+        f"（{start + 1}位 ～ {start + len(res.data)}位）\n\n"
+    )
+
+    for i, row in enumerate(res.data, start=start + 1):
+        user_id = int(row["user_id"])
+        member = guild.get_member(user_id)
+
+        if member:
+            name = member.display_name
+        else:
+            name = f"ID:{user_id}"
+
+        text += f"{i}位：{name} - {row['coins']:,}フラワー\n"
+
+    return text
+
+class FlowerRankingView(discord.ui.View):
+    def __init__(self, page: int):
+        super().__init__(timeout=None)
+        self.page = page
+
+    @discord.ui.button(label="前へ", style=discord.ButtonStyle.gray)
+    async def prev_page(self, interaction: discord.Interaction, button: Button):
+        if self.page <= 1:
+            await interaction.response.send_message(
+                "これ以上前のページはありません",
+                ephemeral=True
+            )
+            return
+
+        self.page -= 1
+
+        text = await create_flower_ranking_text(
+            interaction.guild,
+            self.page
+        )
+
+        await interaction.response.edit_message(
+            content=text,
+            view=self
+        )
+
+    @discord.ui.button(label="次へ", style=discord.ButtonStyle.gray)
+    async def next_page(self, interaction: discord.Interaction, button: Button):
+        self.page += 1
+
+        text = await create_flower_ranking_text(
+            interaction.guild,
+            self.page
+        )
+
+        if text == "データがありません":
+            self.page -= 1
+
+            await interaction.response.send_message(
+                "これ以上次のページはありません",
+                ephemeral=True
+            )
+            return
+
+        await interaction.response.edit_message(
+            content=text,
+            view=self
+        )
         
 @bot.tree.command(name="出席ランキング", description="連続出席日数ランキングをページごとに見る", guild=discord.Object(id=GUILD_ID))
 async def ranking(

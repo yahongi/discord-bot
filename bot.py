@@ -1468,12 +1468,12 @@ async def flower_transfer(
 
         if log_channel:
             embed = discord.Embed(
-                title="🌸 フラワー送金履歴",
+                title="🌸 フラワー送金",
                 color=0xFF69B4
             )
 
             embed.set_author(
-                name=f"送金者：{interaction.user.display_name}",
+                name=interaction.user.display_name,
                 icon_url=interaction.user.display_avatar.url
             )
 
@@ -1482,15 +1482,21 @@ async def flower_transfer(
             )
 
             embed.add_field(
-                name="👤 受取人",
-                value=f"{member.mention}\n`{member.id}`",
+                name="👤 送金者",
+                value=interaction.user.mention,
                 inline=False
             )
 
             embed.add_field(
-                name="💰 送金額",
+                name="⬇ 送金額 ⬇",
                 value=f"**{amount:,} フラワー**",
-                inline=True
+                inline=False
+            )
+
+            embed.add_field(
+                name="👤 受取人",
+                value=member.mention,
+                inline=False
             )
 
             embed.add_field(
@@ -1505,19 +1511,39 @@ async def flower_transfer(
                 inline=True
             )
 
-            embed.add_field(
-                name="🕒 日時",
-                value=datetime.now(
-                    pytz.timezone("Asia/Tokyo")
-                ).strftime("%Y/%m/%d %H:%M:%S"),
-                inline=False
-            )
-
             embed.set_footer(
-                text="やぽっち フラワーシステム"
+                text=datetime.now(
+                    pytz.timezone("Asia/Tokyo")
+                ).strftime("%Y/%m/%d %H:%M:%S")
             )
 
             await log_channel.send(embed=embed)
+
+    except Exception as e:
+        print("FLOWER TRANSFER ERROR:", repr(e), flush=True)
+
+        await interaction.followup.send(
+            "送金中にエラーが発生しました。",
+            ephemeral=True
+        )
+        
+@bot.tree.command(
+    name="自分の順位",
+    description="自分の連続出席順位を見る",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def myrank(interaction: discord.Interaction):
+    try:
+        res = supabase.table("vc_count").select("*").order(
+            "count",
+            desc=True
+        ).execute()
+
+        if not res.data:
+            await interaction.response.send_message("データがありません")
+            return
+
+        for i, row in enum
 
     except Exception as e:
         print("FLOWER TRANSFER ERROR:", repr(e), flush=True)

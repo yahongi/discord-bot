@@ -1543,32 +1543,6 @@ async def myrank(interaction: discord.Interaction):
             await interaction.response.send_message("データがありません")
             return
 
-        for i, row in enum
-
-    except Exception as e:
-        print("FLOWER TRANSFER ERROR:", repr(e), flush=True)
-
-        await interaction.followup.send(
-            "送金中にエラーが発生しました。",
-            ephemeral=True
-        )
-        
-@bot.tree.command(
-    name="自分の順位",
-    description="自分の連続出席順位を見る",
-    guild=discord.Object(id=GUILD_ID)
-)
-async def myrank(interaction: discord.Interaction):
-    try:
-        res = supabase.table("vc_count").select("*").order(
-            "count",
-            desc=True
-        ).execute()
-
-        if not res.data:
-            await interaction.response.send_message("データがありません")
-            return
-
         for i, row in enumerate(res.data, start=1):
             if int(row["user_id"]) == interaction.user.id:
                 await interaction.response.send_message(

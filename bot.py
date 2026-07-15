@@ -1397,23 +1397,25 @@ async def flower_transfer(
     member: discord.Member,
     amount: int
 ):
+    await interaction.response.defer(ephemeral=True)
+
     try:
         if member.bot:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "Botには送金できません。",
                 ephemeral=True
             )
             return
 
         if member.id == interaction.user.id:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "自分自身には送金できません。",
                 ephemeral=True
             )
             return
 
         if amount <= 0:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "送金額は1以上にしてください。",
                 ephemeral=True
             )
@@ -1427,7 +1429,7 @@ async def flower_transfer(
         sender_coins = sender_res.data[0]["coins"] if sender_res.data else 0
 
         if sender_coins < amount:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"フラワーが足りません。\n"
                 f"現在の所持フラワー：**{sender_coins:,}フラワー**",
                 ephemeral=True
@@ -1456,9 +1458,10 @@ async def flower_transfer(
             "updated_at": str(get_today())
         }).execute()
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"{member.display_name} に **{amount:,}フラワー** 送金しました。\n"
-            f"現在の所持フラワー：**{new_sender_coins:,}フラワー**"
+            f"現在の所持フラワー：**{new_sender_coins:,}フラワー**",
+            ephemeral=True
         )
 
         log_channel = interaction.guild.get_channel(FLOWER_LOG_CHANNEL_ID)
@@ -1471,7 +1474,10 @@ async def flower_transfer(
 
             embed.add_field(
                 name="送金者",
-                value=f"{interaction.user.display_name}\nID：{interaction.user.id}",
+                value=(
+                    f"{interaction.user.display_name}\n"
+                    f"ID：{interaction.user.id}"
+                ),
                 inline=False
             )
 
@@ -1512,11 +1518,10 @@ async def flower_transfer(
     except Exception as e:
         print("FLOWER TRANSFER ERROR:", repr(e), flush=True)
 
-        if not interaction.response.is_done():
-            await interaction.response.send_message(
-                "送金中にエラーが発生しました。",
-                ephemeral=True
-            )
+        await interaction.followup.send(
+            "送金中にエラーが発生しました。",
+            ephemeral=True
+        )
         
 @bot.tree.command(
     name="自分の順位",

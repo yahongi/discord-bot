@@ -1468,49 +1468,53 @@ async def flower_transfer(
 
         if log_channel:
             embed = discord.Embed(
-                title="フラワー送金履歴",
-                color=discord.Color.blurple()
+                title="🌸 フラワー送金履歴",
+                color=0xFF69B4
+            )
+
+            embed.set_author(
+                name=f"送金者：{interaction.user.display_name}",
+                icon_url=interaction.user.display_avatar.url
+            )
+
+            embed.set_thumbnail(
+                url=member.display_avatar.url
             )
 
             embed.add_field(
-                name="送金者",
-                value=(
-                    f"{interaction.user.display_name}\n"
-                    f"ID：{interaction.user.id}"
-                ),
+                name="👤 受取人",
+                value=f"{member.mention}\n`{member.id}`",
                 inline=False
             )
 
             embed.add_field(
-                name="受取人",
-                value=f"{member.display_name}\nID：{member.id}",
-                inline=False
-            )
-
-            embed.add_field(
-                name="送金額",
-                value=f"{amount:,}フラワー",
-                inline=False
-            )
-
-            embed.add_field(
-                name="送金者の残高",
-                value=f"{new_sender_coins:,}フラワー",
+                name="💰 送金額",
+                value=f"**{amount:,} フラワー**",
                 inline=True
             )
 
             embed.add_field(
-                name="受取人の残高",
-                value=f"{new_receiver_coins:,}フラワー",
+                name="📤 送金者残高",
+                value=f"{new_sender_coins:,} フラワー",
                 inline=True
             )
 
             embed.add_field(
-                name="日時",
+                name="📥 受取人残高",
+                value=f"{new_receiver_coins:,} フラワー",
+                inline=True
+            )
+
+            embed.add_field(
+                name="🕒 日時",
                 value=datetime.now(
                     pytz.timezone("Asia/Tokyo")
                 ).strftime("%Y/%m/%d %H:%M:%S"),
                 inline=False
+            )
+
+            embed.set_footer(
+                text="やぽっち フラワーシステム"
             )
 
             await log_channel.send(embed=embed)

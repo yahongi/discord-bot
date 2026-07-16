@@ -26,6 +26,74 @@ def get_slot_setting_date():
 
     return now.date().isoformat()
 
+def generate_slot_settings(
+    event_type: str = "normal",
+    force: bool = False
+):
+    setting_date = get_slot_setting_date()
+
+    if event_type not in SLOT_EVENT_DISTRIBUTIONS:
+        event_type = "normal"
+
+    if not force:
+        exists = supabase.table(
+            "slot_machine_settings"
+        ).select(
+            "machine_id"
+        ).eq(
+            "setting_date",
+            setting_date
+        ).limit(1).execute()
+
+        if exists.data:
+            return False
+
+    # 再抽選時は本日の設定を削除
+    if force:
+        supabase.table(
+            "slot_machine_settings"
+        ).delete().eq(
+            "setting_date",
+            setting_date
+        ).execute()
+
+    distribution = SLOT_EVENT_DISTRIBUTIONS[event_type]
+
+    settings = []
+
+    for setting, count in distribution.items():
+        settings.extend([setting] * count)
+
+    random.shuffle(settings)
+
+    now_text = str(
+        datetime.now(
+            pytz.timezone("Asia/Tokyo")
+        )
+    )
+
+    rows = []
+
+    for machine_id, setting in enumerate(settings, start=1):
+        rows.append({
+            "machine_id": machine_id,
+            "setting": setting,
+            "setting_date": setting_date,
+            "updated_at": now_text
+        })
+
+    supabase.table(
+        "slot_machine_settings"
+    ).insert(rows).execute()
+
+    print(
+        f"{SLOT_EVENT_NAMES[event_type]}で"
+        f"本日の100台設定を生成しました",
+        flush=True
+    )
+
+    return True
+    
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -72,6 +140,48 @@ SLOT_INFO_NAMES = {
     1: "簡易情報",
     2: "詳細情報",
     3: "設定確定情報"
+}
+
+SLOT_EVENT_DISTRIBUTIONS = {
+    "normal": {
+        1: 50,
+        2: 25,
+        3: 12,
+        4: 8,
+        5: 4,
+        6: 1
+    },
+    "flower": {
+        1: 40,
+        2: 25,
+        3: 15,
+        4: 10,
+        5: 7,
+        6: 3
+    },
+    "hot": {
+        1: 30,
+        2: 25,
+        3: 18,
+        4: 15,
+        5: 8,
+        6: 4
+    },
+    "super_hot": {
+        1: 20,
+        2: 20,
+        3: 20,
+        4: 18,
+        5: 14,
+        6: 8
+    }
+}
+
+SLOT_EVENT_NAMES = {
+    "normal": "通常営業",
+    "flower": "フラワーデー",
+    "hot": "激熱イベント",
+    "super_hot": "超激熱イベント"
 }
 
 
@@ -617,6 +727,119 @@ class SlotInfoView(discord.ui.View):
         button: discord.ui.Button
     ):
         await self.purchase_info(interaction, 3)
+
+class SlotSettingAdminView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=300)
+
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction
+    ) -> bool:
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message(
+                "このパネルは運営専用です。",
+                ephemeral=True
+            )
+            return False
+
+        return True
+
+    async def apply_event(
+        self,
+        interaction: discord.Interaction,
+        event_type: str
+    ):
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            generate_slot_settings(
+                event_type=event_type,
+                force=True
+            )
+
+            distribution = SLOT_EVENT_DISTRIBUTIONS[event_type]
+
+            text = "\n".join(
+                f"設定{setting}：{count}台"
+                for setting, count in distribution.items()
+            )
+
+            embed = discord.Embed(
+                title="本日のスロット設定を更新しました",
+                description=(
+                    f"営業タイプ："
+                    f"**{SLOT_EVENT_NAMES[event_type]}**\n\n"
+                    f"{text}\n\n"
+                    "既存の本日分設定は上書きされました。"
+                ),
+                color=0xD4AF37
+            )
+
+            await interaction.followup.send(
+                embed=embed,
+                ephemeral=True
+            )
+
+        except Exception as e:
+            print(
+                "SLOT ADMIN SETTING ERROR:",
+                repr(e),
+                flush=True
+            )
+
+            await interaction.followup.send(
+                "設定更新中にエラーが発生しました。",
+                ephemeral=True
+            )
+
+    @discord.ui.button(
+        label="通常営業",
+        style=discord.ButtonStyle.gray,
+        row=0
+    )
+    async def normal_event(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await self.apply_event(interaction, "normal")
+
+    @discord.ui.button(
+        label="フラワーデー",
+        style=discord.ButtonStyle.blurple,
+        row=0
+    )
+    async def flower_event(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await self.apply_event(interaction, "flower")
+
+    @discord.ui.button(
+        label="激熱イベント",
+        style=discord.ButtonStyle.red,
+        row=1
+    )
+    async def hot_event(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await self.apply_event(interaction, "hot")
+
+    @discord.ui.button(
+        label="超激熱イベント",
+        style=discord.ButtonStyle.green,
+        row=1
+    )
+    async def super_hot_event(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await self.apply_event(interaction, "super_hot")
 
 class SlotMachineButton(discord.ui.Button):
     def __init__(
@@ -2353,6 +2576,37 @@ async def flower_transfer(
             "花贈り中にエラーが発生しました。",
             ephemeral=True
         )
+
+@bot.tree.command(
+    name="スロット設定パネル",
+    description="本日のスロット設定配分を変更する",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def slot_setting_panel(
+    interaction: discord.Interaction
+):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message(
+            "このコマンドは運営専用です。",
+            ephemeral=True
+        )
+        return
+
+    embed = discord.Embed(
+        title="スロット設定管理",
+        description=(
+            "本日の営業タイプを選んでください。\n\n"
+            "選択すると、今日の100台設定が"
+            "その配分で再抽選されます。"
+        ),
+        color=0x2F3136
+    )
+
+    await interaction.response.send_message(
+        embed=embed,
+        view=SlotSettingAdminView(),
+        ephemeral=True
+    )
         
 @bot.tree.command(
     name="自分の順位",

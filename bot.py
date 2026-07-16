@@ -536,8 +536,8 @@ class SlotMachineSelectView(discord.ui.View):
         self.bet = bet
         self.page = page
 
-        start = (page - 1) * 20 + 1
-        end = min(start + 19, 100)
+        start = (page - 1) * 15 + 1
+        end = min(start + 14, 100)
 
         for machine_id in range(start, end + 1):
             self.add_item(
@@ -549,7 +549,7 @@ class SlotMachineSelectView(discord.ui.View):
             )
 
         self.prev_page.disabled = page <= 1
-        self.next_page.disabled = page >= 5
+        self.next_page.disabled = page >= 7
 
     async def interaction_check(
         self,
@@ -565,8 +565,8 @@ class SlotMachineSelectView(discord.ui.View):
         return True
 
     def create_embed(self) -> discord.Embed:
-        start = (self.page - 1) * 20 + 1
-        end = min(start + 19, 100)
+        start = (self.page - 1) * 15 + 1
+        end = min(start + 14, 100)
 
         embed = discord.Embed(
             title="Flower Casino",
@@ -579,7 +579,7 @@ class SlotMachineSelectView(discord.ui.View):
         )
 
         embed.set_footer(
-            text=f"{self.page} / 5ページ"
+            text=f"{self.page} / 7ページ"
         )
 
         return embed
@@ -622,7 +622,7 @@ class SlotMachineSelectView(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
-        if self.page >= 5:
+        if self.page >= 7:
             await interaction.response.send_message(
                 "これ以上次のページはありません。",
                 ephemeral=True

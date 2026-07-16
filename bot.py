@@ -538,11 +538,11 @@ class SlotMachineSelectView(discord.ui.View):
         self.bet = bet
         self.page = page
 
-        start = (page - 1) * 15 + 1
-        end = min(start + 14, 100)
+        start = (page - 1) * 16 + 1
+        end = min(start + 15, 100)
 
         for index, machine_id in enumerate(range(start, end + 1)):
-            button_row = index // 5
+            button_row = index // 4
             
             self.add_item(
                 SlotMachineButton(
@@ -570,8 +570,8 @@ class SlotMachineSelectView(discord.ui.View):
         return True
 
     def create_embed(self) -> discord.Embed:
-        start = (self.page - 1) * 15 + 1
-        end = min(start + 14, 100)
+        start = (self.page - 1) * 16 + 1
+        end = min(start + 15, 100)
 
         embed = discord.Embed(
             title="Flower Casino",

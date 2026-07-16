@@ -388,11 +388,10 @@ class SlotMachineView(discord.ui.View):
             ephemeral=True
         )
 
-
 class SlotMachineButton(discord.ui.Button):
     def __init__(self, machine_id: int, owner_id: int, bet: int):
         super().__init__(
-            label=str(machine_id),
+            label=f"{machine_id:03}",
             style=discord.ButtonStyle.gray
         )
 
@@ -428,15 +427,23 @@ class SlotMachineButton(discord.ui.Button):
             )
         )
 
-
 class SlotMachineSelectView(discord.ui.View):
-    def __init__(self, owner_id: int, bet: int):
+    def __init__(
+        self,
+        owner_id: int,
+        bet: int,
+        page: int = 1
+    ):
         super().__init__(timeout=300)
 
         self.owner_id = owner_id
         self.bet = bet
+        self.page = page
 
-        for machine_id in range(1, 21):
+        start = (page - 1) * 20 + 1
+        end = min(start + 19, 100)
+
+        for machine_id in range(start, end + 1):
             self.add_item(
                 SlotMachineButton(
                     machine_id=machine_id,
@@ -444,6 +451,9 @@ class SlotMachineSelectView(discord.ui.View):
                     bet=bet
                 )
             )
+
+        self.prev_page.disabled = page <= 1
+        self.next_page.disabled = page >= 5
 
     async def interaction_check(
         self,
@@ -458,6 +468,81 @@ class SlotMachineSelectView(discord.ui.View):
 
         return True
 
+    def create_embed(self) -> discord.Embed:
+        start = (self.page - 1) * 20 + 1
+        end = min(start + 19, 100)
+
+        embed = discord.Embed(
+            title="Flower Casino",
+            description=(
+                f"BET：**{self.bet:,}フラワー**\n"
+                f"表示中：**マシン #{start:03} ～ #{end:03}**\n\n"
+                "遊ぶスロット台を選んでください。"
+            ),
+            color=discord.Color.blurple()
+        )
+
+        embed.set_footer(
+            text=f"{self.page} / 5ページ"
+        )
+
+        return embed
+
+    @discord.ui.button(
+        label="前へ",
+        style=discord.ButtonStyle.gray,
+        row=4
+    )
+    async def prev_page(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        if self.page <= 1:
+            await interaction.response.send_message(
+                "これ以上前のページはありません。",
+                ephemeral=True
+            )
+            return
+
+        new_view = SlotMachineSelectView(
+            owner_id=self.owner_id,
+            bet=self.bet,
+            page=self.page - 1
+        )
+
+        await interaction.response.edit_message(
+            embed=new_view.create_embed(),
+            view=new_view
+        )
+
+    @discord.ui.button(
+        label="次へ",
+        style=discord.ButtonStyle.gray,
+        row=4
+    )
+    async def next_page(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        if self.page >= 5:
+            await interaction.response.send_message(
+                "これ以上次のページはありません。",
+                ephemeral=True
+            )
+            return
+
+        new_view = SlotMachineSelectView(
+            owner_id=self.owner_id,
+            bet=self.bet,
+            page=self.page + 1
+        )
+
+        await interaction.response.edit_message(
+            embed=new_view.create_embed(),
+            view=new_view
+        )
 
 @bot.tree.command(
     name="スロット",
@@ -475,22 +560,15 @@ async def slot(
         )
         return
 
-    embed = discord.Embed(
-        title="スロット台を選択",
-        description=(
-            f"BET：**{bet:,}フラワー**\n\n"
-            "遊ぶスロット台を選んでください。\n"
-            "現在はマシン1～20を表示しています。"
-        ),
-        color=discord.Color.blurple()
+    select_view = SlotMachineSelectView(
+        owner_id=interaction.user.id,
+        bet=bet,
+        page=1
     )
 
     await interaction.response.send_message(
-        embed=embed,
-        view=SlotMachineSelectView(
-            owner_id=interaction.user.id,
-            bet=bet
-        ),
+        embed=select_view.create_embed(),
+        view=select_view,
         ephemeral=True
     )
 

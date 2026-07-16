@@ -16,6 +16,16 @@ def get_today():
     tz = pytz.timezone("Asia/Tokyo")
     return datetime.now(tz).date()
 
+def get_slot_setting_date():
+    tz = pytz.timezone("Asia/Tokyo")
+    now = datetime.now(tz)
+
+    # 毎朝9時に設定更新
+    if now.hour < 9:
+        return (now.date() - timedelta(days=1)).isoformat()
+
+    return now.date().isoformat()
+
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -51,9 +61,17 @@ THREE_MATCH_MULTIPLIERS = {
 }
 
 SLOT_INFO_PRICES = {
-    "simple": 200,
-    "detail": 500,
-    "setting": 1500
+    0: 0,
+    1: 200,
+    2: 500,
+    3: 1500
+}
+
+SLOT_INFO_NAMES = {
+    0: "未購入",
+    1: "簡易情報",
+    2: "詳細情報",
+    3: "設定確定情報"
 }
 
 
@@ -397,15 +415,18 @@ class SlotMachineView(discord.ui.View):
             title=f"📄 マシン #{self.machine_id:03} 情報",
             description=(
                 "購入する情報を選んでください。\n\n"
-                f"🟦 簡易情報：{SLOT_INFO_PRICES['simple']}🌸\n"
-                f"🟪 詳細情報：{SLOT_INFO_PRICES['detail']}🌸\n"
-                f"🟨 設定確定：{SLOT_INFO_PRICES['setting']}🌸"
+                f"🟦 簡易情報：{SLOT_INFO_PRICES[1]}🌸\n"
+                f"🟪 詳細情報：{SLOT_INFO_PRICES[2]}🌸\n"
+                f"🟨 設定確定：{SLOT_INFO_PRICES[3]}🌸"
             ),
             color=0x5865F2
         )
         await interaction.response.send_message(
             embed=embed,
-            view=SlotInfoView(self.machine_id),
+            view=SlotInfoView(
+                machine_id=self.machine_id,
+                owner_id=interaction.user.id
+            ),
             ephemeral=True
         )
         
@@ -444,6 +465,158 @@ class SlotMachineView(discord.ui.View):
         )
 
         self.stop()
+
+class SlotInfoView(discord.ui.View):
+    def __init__(self, machine_id: int, owner_id: int):
+        super().__init__(timeout=180)
+
+        self.machine_id = machine_id
+        self.owner_id = owner_id
+
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction
+    ) -> bool:
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message(
+                "この情報画面は他のユーザー用です。",
+                ephemeral=True
+            )
+            return False
+
+        return True
+
+    async def purchase_info(
+        self,
+        interaction: discord.Interaction,
+        target_level: int
+    ):
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            setting_date = get_slot_setting_date()
+
+            purchase_res = supabase.table(
+                "slot_info_purchases"
+            ).select("*").eq(
+                "user_id",
+                interaction.user.id
+            ).eq(
+                "machine_id",
+                self.machine_id
+            ).eq(
+                "setting_date",
+                setting_date
+            ).execute()
+
+            current_level = (
+                purchase_res.data[0]["info_level"]
+                if purchase_res.data
+                else 0
+            )
+
+            if current_level >= target_level:
+                await interaction.followup.send(
+                    f"{SLOT_INFO_NAMES[target_level]}は購入済みです。",
+                    ephemeral=True
+                )
+                return
+
+            current_price = SLOT_INFO_PRICES[current_level]
+            target_price = SLOT_INFO_PRICES[target_level]
+            price_to_pay = target_price - current_price
+
+            balance_res = supabase.table("coins").select("*").eq(
+                "user_id",
+                interaction.user.id
+            ).execute()
+
+            current_flower = (
+                balance_res.data[0]["coins"]
+                if balance_res.data
+                else 0
+            )
+
+            if current_flower < price_to_pay:
+                await interaction.followup.send(
+                    "フラワーが足りません。\n"
+                    f"必要：**{price_to_pay:,}フラワー**\n"
+                    f"現在：**{current_flower:,}フラワー**",
+                    ephemeral=True
+                )
+                return
+
+            new_flower = current_flower - price_to_pay
+
+            supabase.table("coins").upsert({
+                "user_id": interaction.user.id,
+                "coins": new_flower,
+                "updated_at": str(get_today())
+            }).execute()
+
+            supabase.table("slot_info_purchases").upsert({
+                "user_id": interaction.user.id,
+                "machine_id": self.machine_id,
+                "info_level": target_level,
+                "setting_date": setting_date,
+                "updated_at": str(
+                    datetime.now(
+                        pytz.timezone("Asia/Tokyo")
+                    )
+                )
+            }).execute()
+
+            await interaction.followup.send(
+                (
+                    f"マシン #{self.machine_id:03} の "
+                    f"**{SLOT_INFO_NAMES[target_level]}**を購入しました。\n"
+                    f"支払い：**{price_to_pay:,}フラワー**\n"
+                    f"残高：**{new_flower:,}フラワー**\n\n"
+                    "実際の情報表示は次に追加します。"
+                ),
+                ephemeral=True
+            )
+
+        except Exception as e:
+            print("SLOT INFO PURCHASE ERROR:", repr(e), flush=True)
+
+            await interaction.followup.send(
+                "台情報の購入中にエラーが発生しました。",
+                ephemeral=True
+            )
+
+    @discord.ui.button(
+        label="簡易情報",
+        style=discord.ButtonStyle.gray
+    )
+    async def simple_info(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await self.purchase_info(interaction, 1)
+
+    @discord.ui.button(
+        label="詳細情報",
+        style=discord.ButtonStyle.blurple
+    )
+    async def detail_info(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await self.purchase_info(interaction, 2)
+
+    @discord.ui.button(
+        label="設定確定",
+        style=discord.ButtonStyle.green
+    )
+    async def setting_info(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await self.purchase_info(interaction, 3)
 
 class SlotMachineButton(discord.ui.Button):
     def __init__(
@@ -537,57 +710,6 @@ class SlotMachineButton(discord.ui.Button):
                 ACTIVE_MACHINES.pop(self.machine_id, None)
 
             raise
-
-class SlotInfoView(discord.ui.View):
-    def __init__(self, machine_id: int):
-        super().__init__(timeout=180)
-
-        self.machine_id = machine_id
-
-    @discord.ui.button(
-        label="簡易情報",
-        style=discord.ButtonStyle.gray
-    )
-    async def simple_info(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-        await interaction.response.send_message(
-            f"簡易情報購入\n"
-            f"価格：{SLOT_INFO_PRICES['simple']}フラワー",
-            ephemeral=True
-        )
-
-    @discord.ui.button(
-        label="詳細情報",
-        style=discord.ButtonStyle.blurple
-    )
-    async def detail_info(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-        await interaction.response.send_message(
-            f"詳細情報購入\n"
-            f"価格：{SLOT_INFO_PRICES['detail']}フラワー",
-            ephemeral=True
-        )
-
-    @discord.ui.button(
-        label="設定確定",
-        style=discord.ButtonStyle.green
-    )
-    async def setting_info(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-        await interaction.response.send_message(
-            f"設定確定情報購入\n"
-            f"価格：{SLOT_INFO_PRICES['setting']}フラワー",
-            ephemeral=True
-        )
 
 class SlotMachineSelectView(discord.ui.View):
     def __init__(

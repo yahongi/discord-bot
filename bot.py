@@ -577,14 +577,14 @@ class SlotMachineSelectView(discord.ui.View):
             title="Flower Casino",
             description=(
                 f"BET：**{self.bet:,}フラワー**\n"
-                f"表示中：**マシン #{start:03} ～ #{end:03}**\n\n"
-                "遊ぶスロット台を選んでください。"
+                f"台番号：**#{start:03} ～ #{end:03}**\n\n"
+                "緑：空席　赤：使用中"
             ),
-            color=discord.Color.blurple()
+            color=0xD4AF37
         )
-
+        
         embed.set_footer(
-            text=f"{self.page} / 7ページ"
+            text=f"{self.page} / 7"
         )
 
         return embed

@@ -437,7 +437,8 @@ class SlotMachineButton(discord.ui.Button):
         self,
         machine_id: int,
         owner_id: int,
-        bet: int
+        bet: int,
+        row: int
     ):
         is_occupied = machine_id in ACTIVE_MACHINES
 
@@ -448,13 +449,14 @@ class SlotMachineButton(discord.ui.Button):
                 if is_occupied
                 else discord.ButtonStyle.green
             ),
-            disabled=is_occupied
+            disabled=is_occupied,
+            row=row
         )
 
         self.machine_id = machine_id
         self.owner_id = owner_id
         self.bet = bet
-
+        
     async def callback(
         self,
         interaction: discord.Interaction
@@ -539,12 +541,15 @@ class SlotMachineSelectView(discord.ui.View):
         start = (page - 1) * 15 + 1
         end = min(start + 14, 100)
 
-        for machine_id in range(start, end + 1):
+        for index, machine_id in enumerate(range(start, end + 1)):
+            button_row = index // 5
+            
             self.add_item(
                 SlotMachineButton(
                     machine_id=machine_id,
                     owner_id=owner_id,
-                    bet=bet
+                    bet=bet,
+                    row=button_row
                 )
             )
 

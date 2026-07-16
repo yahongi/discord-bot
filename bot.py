@@ -1648,35 +1648,36 @@ async def flower_ranking(
         print("FLOWER RANKING ERROR:", repr(e), flush=True)
 
 @bot.tree.command(
-    name="フラワー送金",
-    description="指定したメンバーにフラワーを送る",
+    name="花贈り",
+    description="指定したメンバーへフラワーを贈る",
     guild=discord.Object(id=GUILD_ID)
 )
 async def flower_transfer(
     interaction: discord.Interaction,
     member: discord.Member,
-    amount: int
+    amount: int,
+    reason: str = None
 ):
     await interaction.response.defer(ephemeral=True)
 
     try:
         if member.bot:
             await interaction.followup.send(
-                "Botには送金できません。",
+                "Botには花贈りできません。",
                 ephemeral=True
             )
             return
 
         if member.id == interaction.user.id:
             await interaction.followup.send(
-                "自分自身には送金できません。",
+                "自分自身には花贈りできません。",
                 ephemeral=True
             )
             return
 
         if amount <= 0:
             await interaction.followup.send(
-                "送金額は1以上にしてください。",
+                "贈るフラワーは1以上にしてください。",
                 ephemeral=True
             )
             return
@@ -1718,63 +1719,74 @@ async def flower_transfer(
             "updated_at": str(get_today())
         }).execute()
 
+        reason_text = (
+            reason.strip()
+            if reason and reason.strip()
+            else "理由なし"
+        )
+
         await interaction.followup.send(
-            f"{member.display_name} に **{amount:,}フラワー** 送金しました。\n"
+            f"{member.display_name} に **{amount:,}フラワー** 贈りました。\n"
+            f"理由：**{reason_text}**\n"
             f"現在の所持フラワー：**{new_sender_coins:,}フラワー**",
             ephemeral=True
         )
 
-        log_channel = interaction.guild.get_channel(FLOWER_LOG_CHANNEL_ID)
+        log_channel = interaction.guild.get_channel(
+            FLOWER_LOG_CHANNEL_ID
+        )
 
         if log_channel:
             embed = discord.Embed(
-                title="🌸 フラワー送金",
-                color=0xFF69B4
-            )
-
-            embed.set_author(
-                name=interaction.user.display_name,
-                icon_url=interaction.user.display_avatar.url
-            )
-
-            embed.set_thumbnail(
-                url=member.display_avatar.url
+                title="花贈りログ",
+                color=0x2F3136
             )
 
             embed.add_field(
-                name="👤 送金者",
-                value=interaction.user.mention,
+                name="贈り主",
+                value=(
+                    f"{interaction.user.display_name}\n"
+                    f"ID：{interaction.user.id}"
+                ),
                 inline=False
             )
 
             embed.add_field(
-                name="⬇ 送金額 ⬇",
-                value=f"**{amount:,} フラワー**",
+                name="受取人",
+                value=(
+                    f"{member.display_name}\n"
+                    f"ID：{member.id}"
+                ),
                 inline=False
             )
 
             embed.add_field(
-                name="👤 受取人",
-                value=member.mention,
+                name="贈ったフラワー",
+                value=f"{amount:,} フラワー",
                 inline=False
             )
 
             embed.add_field(
-                name="📤 送金者残高",
-                value=f"{new_sender_coins:,} フラワー",
-                inline=True
+                name="理由",
+                value=reason_text,
+                inline=False
             )
 
             embed.add_field(
-                name="📥 受取人残高",
-                value=f"{new_receiver_coins:,} フラワー",
-                inline=True
+                name="贈与後残高",
+                value=(
+                    f"贈り主：{new_sender_coins:,} フラワー\n"
+                    f"受取人：{new_receiver_coins:,} フラワー"
+                ),
+                inline=False
             )
 
-            embed.set_footer(
-                text=datetime.now(
+            embed.add_field(
+                name="日時",
+                value=datetime.now(
                     pytz.timezone("Asia/Tokyo")
-                ).strftime("%Y/%m/%d %H:%M:%S")
+                ).strftime("%Y/%m/%d %H:%M:%S"),
+                inline=False
             )
 
             await log_channel.send(embed=embed)
@@ -1783,7 +1795,7 @@ async def flower_transfer(
         print("FLOWER TRANSFER ERROR:", repr(e), flush=True)
 
         await interaction.followup.send(
-            "送金中にエラーが発生しました。",
+            "花贈り中にエラーが発生しました。",
             ephemeral=True
         )
         

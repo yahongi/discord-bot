@@ -125,73 +125,292 @@ def keep_alive():
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+class SlotMachineView(discord.ui.View):
+    def __init__(self, owner_id: int, machine_id: int, bet: int):
+        super().__init__(timeout=300)
 
-@bot.tree.command(
-    name="スロット",
-    description="フラワーを賭けてスロットを回す",
-    guild=discord.Object(id=GUILD_ID)
-)
-async def slot(
-    interaction: discord.Interaction,
-    bet: int
-):
-    await interaction.response.defer()
+        self.owner_id = owner_id
+        self.machine_id = machine_id
+        self.bet = bet
+        self.running = False
 
-    try:
-        if bet <= 0:
-            await interaction.followup.send(
-                "BET額は1以上にしてください。",
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction
+    ) -> bool:
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message(
+                "このスロット台は他のユーザーが操作中です。",
+                ephemeral=True
+            )
+            return False
+
+        return True
+
+    @discord.ui.button(
+        label="スロットSTART",
+        style=discord.ButtonStyle.green,
+        row=0
+    )
+    async def start_slot(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        if self.running:
+            await interaction.response.send_message(
+                "すでに回転中です。",
                 ephemeral=True
             )
             return
 
-        balance_res = supabase.table("coins").select("*").eq(
-            "user_id",
-            interaction.user.id
-        ).execute()
+        self.running = True
+        await interaction.response.defer()
 
-        current_flower = (
-            balance_res.data[0]["coins"]
-            if balance_res.data
-            else 0
+        try:
+            balance_res = supabase.table("coins").select("*").eq(
+                "user_id",
+                interaction.user.id
+            ).execute()
+
+            current_flower = (
+                balance_res.data[0]["coins"]
+                if balance_res.data
+                else 0
+            )
+
+            if current_flower < self.bet:
+                self.running = False
+
+                await interaction.followup.send(
+                    f"フラワーが足りません。\n"
+                    f"必要：**{self.bet:,}フラワー**\n"
+                    f"現在：**{current_flower:,}フラワー**",
+                    ephemeral=True
+                )
+                return
+
+            after_bet = current_flower - self.bet
+
+            supabase.table("coins").upsert({
+                "user_id": interaction.user.id,
+                "coins": after_bet,
+                "updated_at": str(get_today())
+            }).execute()
+
+            reels = [
+                random.randint(1, 9),
+                random.randint(1, 9),
+                random.randint(1, 9)
+            ]
+
+            def reel_box(a, b, c):
+                return (
+                    "```text\n"
+                    "┏━━━━━━━━━━━━━━━┓\n"
+                    f"┃   {a}   │   {b}   │   {c}   ┃\n"
+                    "┗━━━━━━━━━━━━━━━┛\n"
+                    "```"
+                )
+
+            spin_embed = discord.Embed(
+                title=f"スロットマシン #{self.machine_id}",
+                description=(
+                    f"プレイヤー：{interaction.user.mention}\n"
+                    f"BET：**{self.bet:,}フラワー**\n\n"
+                    f"{reel_box('?', '?', '?')}\n"
+                    "リール回転中..."
+                ),
+                color=discord.Color.gold()
+            )
+
+            spin_embed.set_thumbnail(
+                url=interaction.user.display_avatar.url
+            )
+
+            await interaction.edit_original_response(
+                embed=spin_embed,
+                view=None
+            )
+
+            for _ in range(7):
+                temp = [
+                    random.randint(1, 9),
+                    random.randint(1, 9),
+                    random.randint(1, 9)
+                ]
+
+                spin_embed.description = (
+                    f"プレイヤー：{interaction.user.mention}\n"
+                    f"BET：**{self.bet:,}フラワー**\n\n"
+                    f"{reel_box(temp[0], temp[1], temp[2])}\n"
+                    "全リール回転中..."
+                )
+
+                await interaction.edit_original_response(
+                    embed=spin_embed
+                )
+
+                await asyncio.sleep(0.18)
+
+            for _ in range(4):
+                middle = random.randint(1, 9)
+                right = random.randint(1, 9)
+
+                spin_embed.description = (
+                    f"プレイヤー：{interaction.user.mention}\n"
+                    f"BET：**{self.bet:,}フラワー**\n\n"
+                    f"{reel_box(reels[0], middle, right)}\n"
+                    "左リール停止"
+                )
+
+                await interaction.edit_original_response(
+                    embed=spin_embed
+                )
+
+                await asyncio.sleep(0.2)
+
+            for _ in range(5):
+                right = random.randint(1, 9)
+
+                spin_embed.description = (
+                    f"プレイヤー：{interaction.user.mention}\n"
+                    f"BET：**{self.bet:,}フラワー**\n\n"
+                    f"{reel_box(reels[0], reels[1], right)}\n"
+                )
+
+                if reels[0] == reels[1]:
+                    spin_embed.title = (
+                        f"リーチ！ マシン #{self.machine_id}"
+                    )
+                    spin_embed.color = discord.Color.orange()
+                    spin_embed.description += "最後のリールに注目..."
+                else:
+                    spin_embed.title = (
+                        f"スロットマシン #{self.machine_id}"
+                    )
+                    spin_embed.color = discord.Color.gold()
+                    spin_embed.description += "中央リール停止"
+
+                await interaction.edit_original_response(
+                    embed=spin_embed
+                )
+
+                await asyncio.sleep(
+                    0.3 if reels[0] == reels[1] else 0.2
+                )
+
+            await asyncio.sleep(0.5)
+
+            result = judge_slot_result(reels, self.bet)
+
+            payout = result["payout"]
+            final_flower = after_bet + payout
+            profit = payout - self.bet
+
+            supabase.table("coins").upsert({
+                "user_id": interaction.user.id,
+                "coins": final_flower,
+                "updated_at": str(get_today())
+            }).execute()
+
+            if result["type"] == "lose":
+                title = f"LOSE - マシン #{self.machine_id}"
+                color = discord.Color.red()
+            elif result["type"] == "two":
+                title = f"WIN - マシン #{self.machine_id}"
+                color = discord.Color.blue()
+            elif result["type"] == "three":
+                title = f"BIG WIN - マシン #{self.machine_id}"
+                color = discord.Color.green()
+            else:
+                title = f"JACKPOT - マシン #{self.machine_id}"
+                color = discord.Color.gold()
+
+            result_embed = discord.Embed(
+                title=title,
+                description=(
+                    f"プレイヤー：{interaction.user.mention}\n"
+                    f"BET：**{self.bet:,}フラワー**\n\n"
+                    f"{reel_box(reels[0], reels[1], reels[2])}\n"
+                    f"結果：**{result['text']}**\n\n"
+                    f"配当：**{payout:,}フラワー**\n"
+                    f"損益：**{profit:+,}フラワー**\n"
+                    f"所持フラワー："
+                    f"**{final_flower:,}フラワー**"
+                ),
+                color=color
+            )
+
+            result_embed.set_thumbnail(
+                url=interaction.user.display_avatar.url
+            )
+
+            await interaction.edit_original_response(
+                embed=result_embed,
+                view=SlotMachineView(
+                    owner_id=self.owner_id,
+                    machine_id=self.machine_id,
+                    bet=self.bet
+                )
+            )
+
+        except Exception as e:
+            print("SLOT BUTTON ERROR:", repr(e), flush=True)
+
+            try:
+                await interaction.followup.send(
+                    "スロット処理中にエラーが発生しました。",
+                    ephemeral=True
+                )
+            except Exception:
+                pass
+
+        finally:
+            self.running = False
+
+    @discord.ui.button(
+        label="台情報を見る",
+        style=discord.ButtonStyle.blurple,
+        row=0
+    )
+    async def machine_info(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await interaction.response.send_message(
+            (
+                f"マシン #{self.machine_id} の情報\n\n"
+                "情報購入機能は次に追加します。\n"
+                "この画面は本人だけに表示されています。"
+            ),
+            ephemeral=True
         )
 
-        if current_flower < bet:
-            await interaction.followup.send(
-                f"フラワーが足りません。\n"
-                f"必要：**{bet:,}フラワー**\n"
-                f"現在：**{current_flower:,}フラワー**",
-                ephemeral=True
-            )
-            return
 
-        after_bet = current_flower - bet
+class SlotMachineButton(discord.ui.Button):
+    def __init__(self, machine_id: int, owner_id: int, bet: int):
+        super().__init__(
+            label=str(machine_id),
+            style=discord.ButtonStyle.gray
+        )
 
-        supabase.table("coins").upsert({
-            "user_id": interaction.user.id,
-            "coins": after_bet,
-            "updated_at": str(get_today())
-        }).execute()
+        self.machine_id = machine_id
+        self.owner_id = owner_id
+        self.bet = bet
 
-        reels = [
-            random.randint(1, 9),
-            random.randint(1, 9),
-            random.randint(1, 9)
-        ]
-
-        machine_number = random.randint(1, 100)
-
+    async def callback(
+        self,
+        interaction: discord.Interaction
+    ):
         embed = discord.Embed(
-            title=f"スロットマシン #{machine_number}",
+            title=f"スロットマシン #{self.machine_id}",
             description=(
                 f"プレイヤー：{interaction.user.mention}\n"
-                f"BET：**{bet:,}フラワー**\n\n"
-                "```text\n"
-                "┏━━━━━━━━━━━━━━━┓\n"
-                "┃   ?   │   ?   │   ?   ┃\n"
-                "┗━━━━━━━━━━━━━━━┛\n"
-                "```\n"
-                "リール回転中..."
+                f"BET：**{self.bet:,}フラワー**\n\n"
+                "情報購入状況：**未購入**\n\n"
+                "下のボタンから操作してください。"
             ),
             color=discord.Color.gold()
         )
@@ -200,119 +419,81 @@ async def slot(
             url=interaction.user.display_avatar.url
         )
 
-        await interaction.edit_original_response(embed=embed)
-        await asyncio.sleep(0.7)
-
-        embed.description = (
-            f"プレイヤー：{interaction.user.mention}\n"
-            f"BET：**{bet:,}フラワー**\n\n"
-            "```text\n"
-            "┏━━━━━━━━━━━━━━━┓\n"
-            f"┃   {reels[0]}   │   ?   │   ?   ┃\n"
-            "┗━━━━━━━━━━━━━━━┛\n"
-            "```\n"
-            "左リール停止"
-        )
-
-        await interaction.edit_original_response(embed=embed)
-        await asyncio.sleep(0.7)
-
-        embed.description = (
-            f"プレイヤー：{interaction.user.mention}\n"
-            f"BET：**{bet:,}フラワー**\n\n"
-            "```text\n"
-            "┏━━━━━━━━━━━━━━━┓\n"
-            f"┃   {reels[0]}   │   {reels[1]}   │   ?   ┃\n"
-            "┗━━━━━━━━━━━━━━━┛\n"
-            "```\n"
-        )
-
-        if reels[0] == reels[1]:
-            embed.title = f"リーチ！ マシン #{machine_number}"
-            embed.color = discord.Color.orange()
-            embed.description += (
-                f"**{reels[0]}・{reels[1]} が揃った！**\n"
-                "最後のリールに注目..."
+        await interaction.response.send_message(
+            embed=embed,
+            view=SlotMachineView(
+                owner_id=self.owner_id,
+                machine_id=self.machine_id,
+                bet=self.bet
             )
-        else:
-            embed.description += "中央リール停止"
-
-        await interaction.edit_original_response(embed=embed)
-        await asyncio.sleep(1.0 if reels[0] == reels[1] else 0.7)
-
-        result = judge_slot_result(reels, bet)
-
-        payout = result["payout"]
-        final_flower = after_bet + payout
-        profit = payout - bet
-
-        supabase.table("coins").upsert({
-            "user_id": interaction.user.id,
-            "coins": final_flower,
-            "updated_at": str(get_today())
-        }).execute()
-
-        if result["type"] == "lose":
-            title = f"LOSE - マシン #{machine_number}"
-            color = discord.Color.red()
-            result_label = "ハズレ"
-
-        elif result["type"] == "two":
-            title = f"WIN - 2つ揃い - マシン #{machine_number}"
-            color = discord.Color.blue()
-            result_label = "2つ揃い"
-
-        elif result["type"] == "three":
-            title = f"BIG WIN - 3つ揃い - マシン #{machine_number}"
-            color = discord.Color.green()
-            result_label = "3つ揃い"
-
-        else:
-            title = f"JACKPOT - マシン #{machine_number}"
-            color = discord.Color.gold()
-            result_label = "ジャックポット"
-
-        result_embed = discord.Embed(
-            title=title,
-            description=(
-                f"プレイヤー：{interaction.user.mention}\n"
-                f"BET：**{bet:,}フラワー**\n\n"
-                "```text\n"
-                "┏━━━━━━━━━━━━━━━┓\n"
-                f"┃   {reels[0]}   │   {reels[1]}   │   {reels[2]}   ┃\n"
-                "┗━━━━━━━━━━━━━━━┛\n"
-                "```\n"
-                f"**結果：{result_label}**\n"
-                f"詳細：{result['text']}\n\n"
-                f"配当：**{payout:,}フラワー**\n"
-                f"損益：**{profit:+,}フラワー**\n\n"
-                f"現在の所持フラワー：**{final_flower:,}フラワー**"
-            ),
-            color=color
         )
 
-        result_embed.set_thumbnail(
-            url=interaction.user.display_avatar.url
-        )
 
-        result_embed.set_footer(
-            text="次の挑戦もお待ちしています"
-        )
+class SlotMachineSelectView(discord.ui.View):
+    def __init__(self, owner_id: int, bet: int):
+        super().__init__(timeout=300)
 
-        await interaction.edit_original_response(
-            embed=result_embed
-        )
+        self.owner_id = owner_id
+        self.bet = bet
 
-    except Exception as e:
-        print("SLOT ERROR:", repr(e), flush=True)
+        for machine_id in range(1, 21):
+            self.add_item(
+                SlotMachineButton(
+                    machine_id=machine_id,
+                    owner_id=owner_id,
+                    bet=bet
+                )
+            )
 
-        try:
-            await interaction.followup.send(
-                "スロット処理中にエラーが発生しました。",
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction
+    ) -> bool:
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message(
+                "この台選択パネルは他のユーザー用です。",
                 ephemeral=True
             )
-        except Exception:
-            pass
+            return False
+
+        return True
+
+
+@bot.tree.command(
+    name="スロット",
+    description="台を選んでスロットを遊ぶ",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def slot(
+    interaction: discord.Interaction,
+    bet: int
+):
+    if bet <= 0:
+        await interaction.response.send_message(
+            "BET額は1以上にしてください。",
+            ephemeral=True
+        )
+        return
+
+    embed = discord.Embed(
+        title="スロット台を選択",
+        description=(
+            f"BET：**{bet:,}フラワー**\n\n"
+            "遊ぶスロット台を選んでください。\n"
+            "現在はマシン1～20を表示しています。"
+        ),
+        color=discord.Color.blurple()
+    )
+
+    await interaction.response.send_message(
+        embed=embed,
+        view=SlotMachineSelectView(
+            owner_id=interaction.user.id,
+            bet=bet
+        ),
+        ephemeral=True
+    )
+
 class ProfileModal(Modal):
 
     def __init__(self, profile=None):

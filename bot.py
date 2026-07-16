@@ -125,6 +125,10 @@ def keep_alive():
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# 使用中のスロット台
+# {台番号: ユーザーID}
+ACTIVE_MACHINES = {}
+
 class SlotMachineView(discord.ui.View):
     def __init__(self, owner_id: int, machine_id: int, bet: int):
         super().__init__(timeout=300)
@@ -133,6 +137,10 @@ class SlotMachineView(discord.ui.View):
         self.machine_id = machine_id
         self.bet = bet
         self.running = False
+
+    async def on_timeout(self):
+        if ACTIVE_MACHINES.get(self.machine_id) == self.owner_id:
+            ACTIVE_MACHINES.pop(self.machine_id, None)
 
     async def interaction_check(
         self,
@@ -388,11 +396,63 @@ class SlotMachineView(discord.ui.View):
             ephemeral=True
         )
 
+    @discord.ui.button(
+        label="台を離れる",
+        style=discord.ButtonStyle.red,
+        row=0
+    )
+    async def leave_machine(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        if self.running:
+            await interaction.response.send_message(
+                "回転中は台から離れられません。",
+                ephemeral=True
+            )
+            return
+
+        if ACTIVE_MACHINES.get(self.machine_id) == self.owner_id:
+            ACTIVE_MACHINES.pop(self.machine_id, None)
+
+        leave_embed = discord.Embed(
+            title=f"スロットマシン #{self.machine_id:03}",
+            description=(
+                f"{interaction.user.mention} が台を離れました。\n\n"
+                "台の状態：**空席**"
+            ),
+            color=discord.Color.gray()
+        )
+
+        await interaction.response.edit_message(
+            embed=leave_embed,
+            view=None
+        )
+
+        self.stop()
+
 class SlotMachineButton(discord.ui.Button):
-    def __init__(self, machine_id: int, owner_id: int, bet: int):
+    def __init__(
+        self,
+        machine_id: int,
+        owner_id: int,
+        bet: int
+    ):
+        is_occupied = machine_id in ACTIVE_MACHINES
+
         super().__init__(
-            label=f"{machine_id:03}",
-            style=discord.ButtonStyle.gray
+            label=(
+                f"{machine_id:03} 使用中"
+                if is_occupied
+                else f"{machine_id:03} 空席"
+            ),
+            style=(
+                discord.ButtonStyle.red
+                if is_occupied
+                else discord.ButtonStyle.green
+            ),
+            disabled=is_occupied
         )
 
         self.machine_id = machine_id
@@ -403,11 +463,43 @@ class SlotMachineButton(discord.ui.Button):
         self,
         interaction: discord.Interaction
     ):
+        # 押した瞬間にほかの人が確保していないか再確認
+        current_owner = ACTIVE_MACHINES.get(self.machine_id)
+
+        if current_owner is not None:
+            await interaction.response.send_message(
+                "この台は現在ほかのユーザーが遊技中です。",
+                ephemeral=True
+            )
+            return
+
+        # すでに別の台を使っていないか確認
+        owned_machine = next(
+            (
+                machine_id
+                for machine_id, user_id in ACTIVE_MACHINES.items()
+                if user_id == interaction.user.id
+            ),
+            None
+        )
+
+        if owned_machine is not None:
+            await interaction.response.send_message(
+                f"すでにマシン #{owned_machine:03} を使用中です。\n"
+                "先に現在の台から離れてください。",
+                ephemeral=True
+            )
+            return
+
+        # 台を確保
+        ACTIVE_MACHINES[self.machine_id] = interaction.user.id
+
         embed = discord.Embed(
-            title=f"スロットマシン #{self.machine_id}",
+            title=f"スロットマシン #{self.machine_id:03}",
             description=(
                 f"プレイヤー：{interaction.user.mention}\n"
-                f"BET：**{self.bet:,}フラワー**\n\n"
+                f"BET：**{self.bet:,}フラワー**\n"
+                "台の状態：**遊技中**\n\n"
                 "情報購入状況：**未購入**\n\n"
                 "下のボタンから操作してください。"
             ),
@@ -418,14 +510,22 @@ class SlotMachineButton(discord.ui.Button):
             url=interaction.user.display_avatar.url
         )
 
-        await interaction.response.send_message(
-            embed=embed,
-            view=SlotMachineView(
-                owner_id=self.owner_id,
-                machine_id=self.machine_id,
-                bet=self.bet
+        try:
+            await interaction.response.send_message(
+                embed=embed,
+                view=SlotMachineView(
+                    owner_id=interaction.user.id,
+                    machine_id=self.machine_id,
+                    bet=self.bet
+                )
             )
-        )
+
+        except Exception:
+            # メッセージ送信に失敗したら台を開放
+            if ACTIVE_MACHINES.get(self.machine_id) == interaction.user.id:
+                ACTIVE_MACHINES.pop(self.machine_id, None)
+
+            raise
 
 class SlotMachineSelectView(discord.ui.View):
     def __init__(

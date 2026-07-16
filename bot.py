@@ -442,11 +442,7 @@ class SlotMachineButton(discord.ui.Button):
         is_occupied = machine_id in ACTIVE_MACHINES
 
         super().__init__(
-            label=(
-                f"{machine_id:03} 使用中"
-                if is_occupied
-                else f"{machine_id:03} 空席"
-            ),
+            label=f"{machine_id:03}",
             style=(
                 discord.ButtonStyle.red
                 if is_occupied
@@ -497,15 +493,15 @@ class SlotMachineButton(discord.ui.Button):
         embed = discord.Embed(
             title=f"スロットマシン #{self.machine_id:03}",
             description=(
-                f"プレイヤー：{interaction.user.mention}\n"
-                f"BET：**{self.bet:,}フラワー**\n"
-                "台の状態：**遊技中**\n\n"
-                "情報購入状況：**未購入**\n\n"
-                "下のボタンから操作してください。"
+                f"**プレイヤー**\n"
+                f"{interaction.user.mention}\n\n"
+                f"**BET**\n"
+                f"{self.bet:,}フラワー\n\n"
+                f"**台情報**\n"
+                f"未購入"
             ),
-            color=discord.Color.gold()
+            color=0xD4AF37
         )
-
         embed.set_thumbnail(
             url=interaction.user.display_avatar.url
         )

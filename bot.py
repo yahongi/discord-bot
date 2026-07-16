@@ -50,6 +50,12 @@ THREE_MATCH_MULTIPLIERS = {
     9: 9.0
 }
 
+SLOT_INFO_PRICES = {
+    "simple": 200,
+    "detail": 500,
+    "setting": 1500
+}
+
 
 def judge_slot_result(reels: list[int], bet: int):
     first, second, third = reels
@@ -387,15 +393,22 @@ class SlotMachineView(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
-        await interaction.response.send_message(
-            (
-                f"マシン #{self.machine_id} の情報\n\n"
-                "情報購入機能は次に追加します。\n"
-                "この画面は本人だけに表示されています。"
+        embed = discord.Embed(
+            title=f"📄 マシン #{self.machine_id:03} 情報",
+            description=(
+                "購入する情報を選んでください。\n\n"
+                f"🟦 簡易情報：{SLOT_INFO_PRICES['simple']}🌸\n"
+                f"🟪 詳細情報：{SLOT_INFO_PRICES['detail']}🌸\n"
+                f"🟨 設定確定：{SLOT_INFO_PRICES['setting']}🌸"
             ),
+            color=0x5865F2
+        )
+        await interaction.response.send_message(
+            embed=embed,
+            view=SlotInfoView(self.machine_id),
             ephemeral=True
         )
-
+        
     @discord.ui.button(
         label="台を離れる",
         style=discord.ButtonStyle.red,
@@ -524,6 +537,57 @@ class SlotMachineButton(discord.ui.Button):
                 ACTIVE_MACHINES.pop(self.machine_id, None)
 
             raise
+
+class SlotInfoView(discord.ui.View):
+    def __init__(self, machine_id: int):
+        super().__init__(timeout=180)
+
+        self.machine_id = machine_id
+
+    @discord.ui.button(
+        label="簡易情報",
+        style=discord.ButtonStyle.gray
+    )
+    async def simple_info(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await interaction.response.send_message(
+            f"簡易情報購入\n"
+            f"価格：{SLOT_INFO_PRICES['simple']}フラワー",
+            ephemeral=True
+        )
+
+    @discord.ui.button(
+        label="詳細情報",
+        style=discord.ButtonStyle.blurple
+    )
+    async def detail_info(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await interaction.response.send_message(
+            f"詳細情報購入\n"
+            f"価格：{SLOT_INFO_PRICES['detail']}フラワー",
+            ephemeral=True
+        )
+
+    @discord.ui.button(
+        label="設定確定",
+        style=discord.ButtonStyle.green
+    )
+    async def setting_info(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await interaction.response.send_message(
+            f"設定確定情報購入\n"
+            f"価格：{SLOT_INFO_PRICES['setting']}フラワー",
+            ephemeral=True
+        )
 
 class SlotMachineSelectView(discord.ui.View):
     def __init__(

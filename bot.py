@@ -1742,6 +1742,15 @@ async def flower_transfer(
                 color=0x2F3136
             )
 
+            embed.set_author(
+                name=f"贈り主：{interaction.user.display_name}",
+                icon_url=interaction.user.display_avatar.url
+            )
+
+            embed.set_thumbnail(
+                url=member.display_avatar.url
+            )
+
             embed.add_field(
                 name="贈り主",
                 value=(
@@ -1790,7 +1799,7 @@ async def flower_transfer(
             )
 
             await log_channel.send(embed=embed)
-
+            
     except Exception as e:
         print("FLOWER TRANSFER ERROR:", repr(e), flush=True)
 

@@ -66,11 +66,9 @@ def generate_slot_settings(
 
     random.shuffle(settings)
 
-    now_text = str(
-        datetime.now(
-            pytz.timezone("Asia/Tokyo")
-        )
-    )
+    now_text = datetime.now(
+        pytz.timezone("Asia/Tokyo")
+    ).isoformat()
 
     rows = []
 
@@ -82,9 +80,19 @@ def generate_slot_settings(
             "updated_at": now_text
         })
 
+    # 100台の設定を保存
     supabase.table(
         "slot_machine_settings"
     ).insert(rows).execute()
+
+    # 本日の営業タイプを保存
+    supabase.table(
+        "slot_event"
+    ).upsert({
+        "event_date": setting_date,
+        "event_type": event_type,
+        "updated_at": now_text
+    }).execute()
 
     print(
         f"{SLOT_EVENT_NAMES[event_type]}で"
@@ -93,16 +101,6 @@ def generate_slot_settings(
     )
 
     return True
-
-supabase.table("slot_event").upsert({
-    "event_date": setting_date,
-    "event_type": event_type,
-    "updated_at": str(
-        datetime.now(
-            pytz.timezone("Asia/Tokyo")
-        )
-    )
-}).execute()
     
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]

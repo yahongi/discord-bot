@@ -613,6 +613,50 @@ class SlotInfoView(discord.ui.View):
         try:
             setting_date = get_slot_setting_date()
 
+            # この台の本当の設定を取得
+            setting_res = supabase.table(
+                "slot_machine_settings"
+            ).select(
+                "setting"
+            ).eq(
+                "machine_id",
+                self.machine_id
+            ).eq(
+                "setting_date",
+                setting_date
+            ).limit(1).execute()
+
+            if not setting_res.data:
+                await interaction.followup.send(
+                    "この台の本日設定が見つかりませんでした。",
+                    ephemeral=True
+                )
+                return
+
+            machine_setting = int(
+                setting_res.data[0]["setting"]
+            )
+
+            # 本日のイベントを取得
+            event_res = supabase.table(
+                "slot_event"
+            ).select(
+                "event_type"
+            ).eq(
+                "event_date",
+                setting_date
+            ).limit(1).execute()
+
+            event_type = (
+                event_res.data[0]["event_type"]
+                if event_res.data
+                else "normal"
+            )
+
+            if event_type not in SLOT_EVENT_NAMES:
+                event_type = "normal"
+
+            # 購入状況を取得
             purchase_res = supabase.table(
                 "slot_info_purchases"
             ).select("*").eq(
@@ -627,14 +671,76 @@ class SlotInfoView(discord.ui.View):
             ).execute()
 
             current_level = (
-                purchase_res.data[0]["info_level"]
+                int(purchase_res.data[0]["info_level"])
                 if purchase_res.data
                 else 0
             )
 
+            # 情報内容を作る
+            if target_level == 1:
+                if machine_setting >= 5:
+                    info_text = (
+                        "🔥 **高設定の期待が持てる台です。**\n"
+                        "続けて遊ぶ価値がありそうです。"
+                    )
+                    info_color = discord.Color.orange()
+
+                elif machine_setting >= 3:
+                    info_text = (
+                        "📊 **中間設定の可能性があります。**\n"
+                        "大きく勝てるかは展開次第です。"
+                    )
+                    info_color = discord.Color.blue()
+
+                else:
+                    info_text = (
+                        "❄️ **低設定寄りの台です。**\n"
+                        "深追いには注意してください。"
+                    )
+                    info_color = discord.Color.light_gray()
+
+            elif target_level == 2:
+                setting_ranges = {
+                    1: "設定1〜2の可能性が高い",
+                    2: "設定1〜3の可能性が高い",
+                    3: "設定2〜4の可能性が高い",
+                    4: "設定3〜5の可能性が高い",
+                    5: "設定4〜6の可能性が高い",
+                    6: "設定5〜6の可能性が高い"
+                }
+
+                info_text = (
+                    f"🔍 **{setting_ranges[machine_setting]}です。**\n\n"
+                    f"本日の営業タイプ："
+                    f"**{SLOT_EVENT_NAMES[event_type]}**"
+                )
+                info_color = discord.Color.purple()
+
+            else:
+                info_text = (
+                    "🎯 **設定が確定しました。**\n\n"
+                    f"この台の設定は……\n"
+                    f"# 設定{machine_setting}"
+                )
+                info_color = discord.Color.gold()
+
+            # すでに購入済みなら料金を取らず再表示
             if current_level >= target_level:
+                embed = discord.Embed(
+                    title=(
+                        f"📄 マシン #{self.machine_id:03} "
+                        f"{SLOT_INFO_NAMES[target_level]}"
+                    ),
+                    description=info_text,
+                    color=info_color
+                )
+
+                embed.set_footer(
+                    text="この情報は購入済みです"
+                )
+
                 await interaction.followup.send(
-                    f"{SLOT_INFO_NAMES[target_level]}は購入済みです。",
+                    embed=embed,
                     ephemeral=True
                 )
                 return
@@ -643,13 +749,16 @@ class SlotInfoView(discord.ui.View):
             target_price = SLOT_INFO_PRICES[target_level]
             price_to_pay = target_price - current_price
 
-            balance_res = supabase.table("coins").select("*").eq(
+            # 所持フラワーを取得
+            balance_res = supabase.table(
+                "coins"
+            ).select("*").eq(
                 "user_id",
                 interaction.user.id
             ).execute()
 
             current_flower = (
-                balance_res.data[0]["coins"]
+                int(balance_res.data[0]["coins"])
                 if balance_res.data
                 else 0
             )
@@ -665,13 +774,17 @@ class SlotInfoView(discord.ui.View):
 
             new_flower = current_flower - price_to_pay
 
+            # フラワーを支払う
             supabase.table("coins").upsert({
                 "user_id": interaction.user.id,
                 "coins": new_flower,
                 "updated_at": str(get_today())
             }).execute()
 
-            supabase.table("slot_info_purchases").upsert({
+            # 購入情報を保存
+            supabase.table(
+                "slot_info_purchases"
+            ).upsert({
                 "user_id": interaction.user.id,
                 "machine_id": self.machine_id,
                 "info_level": target_level,
@@ -683,24 +796,44 @@ class SlotInfoView(discord.ui.View):
                 )
             }).execute()
 
-            await interaction.followup.send(
-                (
-                    f"マシン #{self.machine_id:03} の "
-                    f"**{SLOT_INFO_NAMES[target_level]}**を購入しました。\n"
-                    f"支払い：**{price_to_pay:,}フラワー**\n"
-                    f"残高：**{new_flower:,}フラワー**\n\n"
-                    "実際の情報表示は次に追加します。"
+            embed = discord.Embed(
+                title=(
+                    f"📄 マシン #{self.machine_id:03} "
+                    f"{SLOT_INFO_NAMES[target_level]}"
                 ),
+                description=info_text,
+                color=info_color
+            )
+
+            embed.add_field(
+                name="購入情報",
+                value=(
+                    f"支払い：**{price_to_pay:,}フラワー**\n"
+                    f"残高：**{new_flower:,}フラワー**"
+                ),
+                inline=False
+            )
+
+            embed.set_footer(
+                text="本日の台情報として保存されました"
+            )
+
+            await interaction.followup.send(
+                embed=embed,
                 ephemeral=True
             )
 
         except Exception as e:
-            print("SLOT INFO PURCHASE ERROR:", repr(e), flush=True)
-
+            print(
+                "SLOT INFO PURCHASE ERROR:",
+                repr(e),
+                flush=True
+            )
+            
             await interaction.followup.send(
                 "台情報の購入中にエラーが発生しました。",
                 ephemeral=True
-            )
+            ) 
 
     @discord.ui.button(
         label="簡易情報",

@@ -860,170 +860,124 @@ class SlotSettingAdminView(discord.ui.View):
         button: discord.ui.Button
     ):
         await interaction.response.defer(ephemeral=True)
-        
+
         try:
             setting_date = get_slot_setting_date()
-            
+
             res = supabase.table(
                 "slot_machine_settings"
-            ).select("*").eq(
+            ).select(
+                "machine_id, setting"
+            ).eq(
                 "setting_date",
                 setting_date
-            ).order(
-                "setting",
-                desc=True
-            ).order(
-                "machine_id"
             ).execute()
-            
+
+            if not res.data:
+                await interaction.followup.send(
+                    "本日のスロット設定はまだ生成されていません。",
+                    ephemeral=True
+                )
+                return
+
             settings = {
-                6: [],
-                5: [],
-                4: [],
-                3: [],
+                1: [],
                 2: [],
-                1: []
+                3: [],
+                4: [],
+                5: [],
+                6: []
             }
-            
+
             for row in res.data:
-                settings[row["setting"]].append(
-                    f"{row['machine_id']:03}"
+                setting = int(row["setting"])
+                machine_id = int(row["machine_id"])
+
+                settings[setting].append(
+                    f"{machine_id:03}"
                 )
-                
-                embed = discord.Embed(
-                    title="📊 本日の設定一覧",
-                    color=0xD4AF37   
-                )
-                
-                for setting in [6, 5, 4, 3, 2, 1]:
-                    
-                    value = (
-                        " ".join(settings[setting])
-                        if settings[setting]
-                        else "なし"
-                    )
-                    
-                    embed.add_field(
-                        name=f"設定{setting}",
-                        value=value,
-                        inline=False
-                    )
-                    
-                    await interaction.followup.send(
-                        embed=embed,
-                        ephemeral=True
-                    )
-        
+
+            for machine_list in settings.values():
+                machine_list.sort()
+
+            event_res = supabase.table(
+                "slot_event"
+            ).select(
+                "event_type"
+            ).eq(
+                "event_date",
+                setting_date
+            ).limit(1).execute()
+
+            event_type = (
+                event_res.data[0]["event_type"]
+                if event_res.data
+                else "normal"
+            )
+
+            if event_type not in SLOT_EVENT_DISTRIBUTIONS:
+                event_type = "normal"
+
+            distribution = SLOT_EVENT_DISTRIBUTIONS[event_type]
+
+            embed = discord.Embed(
+                title="📊 本日の高設定",
+                description=(
+                    f"**{SLOT_EVENT_NAMES[event_type]}**"
+                ),
+                color=0xD4AF37
+            )
+
+            embed.add_field(
+                name="👑 設定6",
+                value=(
+                    "・".join(settings[6])
+                    if settings[6]
+                    else "なし"
+                ),
+                inline=False
+            )
+
+            embed.add_field(
+                name="⭐ 設定5",
+                value=(
+                    "・".join(settings[5])
+                    if settings[5]
+                    else "なし"
+                ),
+                inline=False
+            )
+
+            embed.add_field(
+                name="━━━━━━━━━━━━━━",
+                value=(
+                    "📈 **設定分布**\n\n"
+                    f"設定1：{distribution[1]}台\n"
+                    f"設定2：{distribution[2]}台\n"
+                    f"設定3：{distribution[3]}台\n"
+                    f"設定4：{distribution[4]}台\n"
+                    f"設定5：{distribution[5]}台\n"
+                    f"設定6：{distribution[6]}台"
+                ),
+                inline=False
+            )
+
+            await interaction.followup.send(
+                embed=embed,
+                ephemeral=True
+            )
+
         except Exception as e:
             print(
                 "SHOW SETTINGS ERROR:",
                 repr(e),
                 flush=True
             )
-            
+
             await interaction.followup.send(
-                "設定一覧の取得に失敗しました。",
+                "設定一覧の取得中にエラーが発生しました。",
                 ephemeral=True
             )
-
-@discord.ui.button(
-    label="📊 設定一覧",
-    style=discord.ButtonStyle.gray,
-    row=2
-)
-async def show_settings(
-    self,
-    interaction: discord.Interaction,
-    button: discord.ui.Button
-):
-    await interaction.response.defer(ephemeral=True)
-
-    try:
-        setting_date = get_slot_setting_date()
-
-        res = supabase.table(
-            "slot_machine_settings"
-        ).select("*").eq(
-            "setting_date",
-            setting_date
-        ).execute()
-
-        settings = {
-            1: [],
-            2: [],
-            3: [],
-            4: [],
-            5: [],
-            6: []
-        }
-
-        for row in res.data:
-            settings[row["setting"]].append(
-                f"{row['machine_id']:03}"
-            )
-
-        distribution = SLOT_EVENT_DISTRIBUTIONS.get(
-            CURRENT_SLOT_EVENT,
-            SLOT_EVENT_DISTRIBUTIONS["normal"]
-        )
-
-        embed = discord.Embed(
-            title="📊 本日の高設定",
-            description=f"**{SLOT_EVENT_NAMES[CURRENT_SLOT_EVENT]}**",
-            color=0xD4AF37
-        )
-
-        embed.add_field(
-            name="👑 設定6",
-            value=(
-                "・".join(settings[6])
-                if settings[6]
-                else "なし"
-            ),
-            inline=False
-        )
-
-        embed.add_field(
-            name="⭐ 設定5",
-            value=(
-                "・".join(settings[5])
-                if settings[5]
-                else "なし"
-            ),
-            inline=False
-        )
-
-        embed.add_field(
-            name="━━━━━━━━━━━━━━",
-            value=(
-                "📈 **設定分布**\n\n"
-                f"設定1：{distribution[1]}台\n"
-                f"設定2：{distribution[2]}台\n"
-                f"設定3：{distribution[3]}台\n"
-                f"設定4：{distribution[4]}台\n"
-                f"設定5：{distribution[5]}台\n"
-                f"設定6：{distribution[6]}台"
-            ),
-            inline=False
-        )
-
-        await interaction.followup.send(
-            embed=embed,
-            ephemeral=True
-        )
-
-    except Exception as e:
-        print(
-            "SHOW SETTINGS ERROR:",
-            repr(e),
-            flush=True
-        )
-
-        await interaction.followup.send(
-            "設定一覧の取得中にエラーが発生しました。",
-            ephemeral=True
-        )
-
 class SlotMachineButton(discord.ui.Button):
     def __init__(
         self,

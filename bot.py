@@ -253,28 +253,30 @@ def create_slot_frame(
         reel_draw = ImageDraw.Draw(reel_layer)
 
         if stopped[i]:
-            offset = 0
-            center_number = reels[i]
+            scroll = 0
         else:
-            offset = offsets[i]
-            center_number = reels[i]
+            scroll = offsets[i]
 
-        numbers = []
+        center_number = reels[i]
 
-        for position in range(-3, 4):
-            number = (
-                center_number + position - 1
-            ) % 9 + 1
+        while scroll >= number_gap:
+            scroll -= number_gap
+            center_number = center_number % 9 + 1
+
+        offset = scroll
+        scroll = offset
+
+        base = center_number - 3
+
+        for position in range(8):
+
+            number = (base + position) % 9 + 1
 
             y = (
-                reel_h // 2
-                + position * number_gap
-                + offset
+                position * number_gap
+                - scroll
             )
 
-            numbers.append((number, y))
-
-        for number, y in numbers:
             text = str(number)
 
             box = reel_draw.textbbox(
@@ -283,6 +285,18 @@ def create_slot_frame(
                 font=font
             )
 
+            text_w = box[2] - box[0]
+            text_h = box[3] - box[1]
+
+            reel_draw.text(
+                (
+                    reel_w // 2 - text_w // 2,
+                    y - text_h // 2
+                ),
+                text,
+                fill=(0, 0, 0),
+                font=font
+            )
             text_w = box[2] - box[0]
             text_h = box[3] - box[1]
 
@@ -320,7 +334,8 @@ def create_slot_frame(
     image.save(buffer, format="PNG")
     buffer.seek(0)
 
-    return buffer    
+    return buffer  
+    
 def create_spinning_slot_gif():
     width = 720
     height = 420

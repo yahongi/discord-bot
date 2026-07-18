@@ -355,6 +355,158 @@ def create_slot_frame(center_numbers):
     buffer.seek(0)
 
     return buffer
+
+def create_spinning_slot_gif():
+    width = 720
+    height = 420
+
+    frames = []
+
+    for frame_index in range(36):
+        image = Image.new(
+            "RGB",
+            (width, height),
+            (24, 14, 38)
+        )
+
+        draw = ImageDraw.Draw(image)
+
+        reel_bg = (245, 240, 255)
+        reel_border = (196, 154, 58)
+        center_line = (255, 215, 90)
+        main_text = (65, 35, 90)
+        sub_text = (155, 130, 175)
+
+        reel_width = 180
+        reel_height = 300
+        gap = 25
+
+        total_width = reel_width * 3 + gap * 2
+        start_x = (width - total_width) // 2
+        start_y = 60
+
+        try:
+            font_big = ImageFont.truetype(
+                "DejaVuSans-Bold.ttf",
+                88
+            )
+
+            font_small = ImageFont.truetype(
+                "DejaVuSans-Bold.ttf",
+                52
+            )
+
+        except Exception:
+            font_big = ImageFont.load_default()
+            font_small = ImageFont.load_default()
+
+        for reel_index in range(3):
+            x1 = start_x + reel_index * (reel_width + gap)
+            y1 = start_y
+            x2 = x1 + reel_width
+            y2 = y1 + reel_height
+
+            draw.rounded_rectangle(
+                (x1, y1, x2, y2),
+                radius=24,
+                fill=reel_bg,
+                outline=reel_border,
+                width=6
+            )
+
+            offset = frame_index + reel_index * 3
+
+            top_number = ((offset - 1) % 9) + 1
+            center_number = (offset % 9) + 1
+            bottom_number = ((offset + 1) % 9) + 1
+
+            top_text = str(top_number)
+            center_text = str(center_number)
+            bottom_text = str(bottom_number)
+
+            top_box = draw.textbbox(
+                (0, 0),
+                top_text,
+                font=font_small
+            )
+
+            center_box = draw.textbbox(
+                (0, 0),
+                center_text,
+                font=font_big
+            )
+
+            bottom_box = draw.textbbox(
+                (0, 0),
+                bottom_text,
+                font=font_small
+            )
+
+            top_width = top_box[2] - top_box[0]
+            center_width = center_box[2] - center_box[0]
+            center_height = center_box[3] - center_box[1]
+            bottom_width = bottom_box[2] - bottom_box[0]
+
+            draw.text(
+                (
+                    x1 + (reel_width - top_width) // 2,
+                    y1 + 20
+                ),
+                top_text,
+                font=font_small,
+                fill=sub_text
+            )
+
+            draw.text(
+                (
+                    x1 + (reel_width - center_width) // 2,
+                    y1 + (reel_height - center_height) // 2 - 10
+                ),
+                center_text,
+                font=font_big,
+                fill=main_text
+            )
+
+            draw.text(
+                (
+                    x1 + (reel_width - bottom_width) // 2,
+                    y2 - 85
+                ),
+                bottom_text,
+                font=font_small,
+                fill=sub_text
+            )
+
+        line_y = start_y + reel_height // 2
+
+        draw.line(
+            (
+                start_x - 20,
+                line_y,
+                start_x + total_width + 20,
+                line_y
+            ),
+            fill=center_line,
+            width=8
+        )
+
+        frames.append(image)
+
+    buffer = io.BytesIO()
+
+    frames[0].save(
+        buffer,
+        format="GIF",
+        save_all=True,
+        append_images=frames[1:],
+        duration=45,
+        loop=0,
+        optimize=False
+    )
+
+    buffer.seek(0)
+
+    return buffer
     
 def judge_slot_result(reels: list[int], bet: int):
     first, second, third = reels
@@ -540,19 +692,17 @@ class SlotMachineView(discord.ui.View):
             spin_embed.set_thumbnail(
                 url=interaction.user.display_avatar.url
             )
+            
+            # 回転GIFを作成
+            reel_gif = create_spinning_slot_gif()
 
-            # 黒い数字リール画像を作成
-            reel_image = create_slot_frame([1, 2, 3])
-
-            # Discordへ送る画像ファイルに変換
             reel_file = discord.File(
-                reel_image,
-                filename="slot_reel.png"
+                reel_gif,
+                filename="slot_spin.gif"
             )
 
-            # Embed内に画像を表示
             spin_embed.set_image(
-                url="attachment://slot_reel.png"
+                url="attachment://slot_spin.gif"
             )
 
             await interaction.edit_original_response(
@@ -561,74 +711,7 @@ class SlotMachineView(discord.ui.View):
                 view=None
             )
 
-            for _ in range(7):
-                temp = [
-                    random.randint(1, 9),
-                    random.randint(1, 9),
-                    random.randint(1, 9)
-                ]
-
-                spin_embed.description = (
-                    f"プレイヤー：{interaction.user.mention}\n"
-                    f"BET：**{self.bet:,}フラワー**\n\n"
-                    f"{reel_box(temp[0], temp[1], temp[2])}\n"
-                    "全リール回転中..."
-                )
-
-                await interaction.edit_original_response(
-                    embed=spin_embed
-                )
-
-                await asyncio.sleep(0.18)
-
-            for _ in range(4):
-                middle = random.randint(1, 9)
-                right = random.randint(1, 9)
-
-                spin_embed.description = (
-                    f"プレイヤー：{interaction.user.mention}\n"
-                    f"BET：**{self.bet:,}フラワー**\n\n"
-                    f"{reel_box(reels[0], middle, right)}\n"
-                    "左リール停止"
-                )
-
-                await interaction.edit_original_response(
-                    embed=spin_embed
-                )
-
-                await asyncio.sleep(0.2)
-
-            for _ in range(5):
-                right = random.randint(1, 9)
-
-                spin_embed.description = (
-                    f"プレイヤー：{interaction.user.mention}\n"
-                    f"BET：**{self.bet:,}フラワー**\n\n"
-                    f"{reel_box(reels[0], reels[1], right)}\n"
-                )
-
-                if reels[0] == reels[1]:
-                    spin_embed.title = (
-                        f"リーチ！ マシン #{self.machine_id}"
-                    )
-                    spin_embed.color = discord.Color.orange()
-                    spin_embed.description += "最後のリールに注目..."
-                else:
-                    spin_embed.title = (
-                        f"スロットマシン #{self.machine_id}"
-                    )
-                    spin_embed.color = discord.Color.gold()
-                    spin_embed.description += "中央リール停止"
-
-                await interaction.edit_original_response(
-                    embed=spin_embed
-                )
-
-                await asyncio.sleep(
-                    0.3 if reels[0] == reels[1] else 0.2
-                )
-
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(2.5)
 
             result = judge_slot_result(reels, self.bet)
 
@@ -676,6 +759,7 @@ class SlotMachineView(discord.ui.View):
 
             await interaction.edit_original_response(
                 embed=result_embed,
+                attachments=[],
                 view=SlotMachineView(
                     owner_id=self.owner_id,
                     machine_id=self.machine_id,

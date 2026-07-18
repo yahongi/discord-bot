@@ -194,57 +194,45 @@ SLOT_EVENT_NAMES = {
     "super_hot": "超激熱イベント"
 }
 
-def create_slot_frame(
+def _get_slot_font(size: int):
+    try:
+        return ImageFont.truetype("DejaVuSans-Bold.ttf", size)
+    except Exception:
+        return ImageFont.load_default()
+
+
+def _draw_slot_machine(
     reels,
-    offsets=(0, 0, 0),
-    stopped=(False, False, False)
+    remaining_pixels=(0.0, 0.0, 0.0)
 ):
+    """スロット画像を1フレーム生成する。remaining_pixelsは停止までの残り移動量。"""
     width = 500
     height = 210
-
-    image = Image.new(
-        "RGB",
-        (width, height),
-        (15, 15, 15)
-    )
-    draw = ImageDraw.Draw(image)
-
-    try:
-        font = ImageFont.truetype(
-            "DejaVuSans-Bold.ttf",
-            44
-        )
-    except:
-        font = ImageFont.load_default()
-
     reel_w = 95
     reel_h = 150
     gap = 25
-
-    start_x = (
-        width
-        - (reel_w * 3 + gap * 2)
-    ) // 2
-    start_y = 30
-
     number_gap = 55
+    start_x = (width - (reel_w * 3 + gap * 2)) // 2
+    start_y = 30
+    center_y = reel_h // 2
+
+    image = Image.new("RGB", (width, height), (15, 15, 15))
+    draw = ImageDraw.Draw(image)
+    font = _get_slot_font(44)
 
     for i in range(3):
         x = start_x + i * (reel_w + gap)
 
+        # リールの外枠
         draw.rounded_rectangle(
-            (
-                x,
-                start_y,
-                x + reel_w,
-                start_y + reel_h
-            ),
+            (x, start_y, x + reel_w, start_y + reel_h),
             radius=10,
             fill=(250, 250, 250),
             outline=(120, 120, 120),
             width=2
         )
 
+        # リール内だけに描画して、枠外へ数字が出ないようにする
         reel_layer = Image.new(
             "RGBA",
             (reel_w, reel_h),
@@ -252,242 +240,121 @@ def create_slot_frame(
         )
         reel_draw = ImageDraw.Draw(reel_layer)
 
-        if stopped[i]:
-            scroll = 0
-        else:
-            scroll = offsets[i]
+        remaining = max(0.0, float(remaining_pixels[i]))
+        passed_symbols = int(remaining // number_gap)
+        offset = remaining % number_gap
 
-        center_number = reels[i]
+        # remaining=0 のとき、指定された結果が中央にぴったり止まる
+        center_number = ((int(reels[i]) - passed_symbols - 1) % 9) + 1
 
-        while scroll >= number_gap:
-            scroll -= number_gap
-            center_number = center_number % 9 + 1
-
-        offset = scroll
-        scroll = offset
-
-        base = center_number - 3
-
-        for position in range(8):
-
-            number = (base + position) % 9 + 1
-
-            y = (
-                position * number_gap
-                - scroll
-            )
-
+        for position in range(-4, 5):
+            number = ((center_number + position - 1) % 9) + 1
+            y = center_y + position * number_gap + offset
             text = str(number)
-
-            box = reel_draw.textbbox(
-                (0, 0),
-                text,
-                font=font
-            )
-
+            box = reel_draw.textbbox((0, 0), text, font=font)
             text_w = box[2] - box[0]
             text_h = box[3] - box[1]
 
             reel_draw.text(
                 (
                     reel_w // 2 - text_w // 2,
-                    y - text_h // 2
-                ),
-                text,
-                fill=(0, 0, 0),
-                font=font
-            )
-            text_w = box[2] - box[0]
-            text_h = box[3] - box[1]
-
-            reel_draw.text(
-                (
-                    reel_w // 2 - text_w // 2,
-                    y - text_h // 2
+                    int(y - text_h // 2)
                 ),
                 text,
                 fill=(0, 0, 0),
                 font=font
             )
 
-        image.paste(
-            reel_layer,
-            (x, start_y),
-            reel_layer
-        )
+        image.paste(reel_layer, (x, start_y), reel_layer)
 
+    # 中央の当たりライン
     line_y = start_y + reel_h // 2
+    draw.line((25, line_y, 60, line_y), fill=(255, 215, 0), width=4)
+    draw.line((440, line_y, 475, line_y), fill=(255, 215, 0), width=4)
 
-    draw.line(
-        (25, line_y, 60, line_y),
-        fill=(255, 215, 0),
-        width=4
-    )
+    return image
 
-    draw.line(
-        (440, line_y, 475, line_y),
-        fill=(255, 215, 0),
-        width=4
-    )
 
+def create_slot_frame(reels):
+    """停止結果をPNGで返す。"""
+    image = _draw_slot_machine(reels, (0, 0, 0))
     buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
+    image.save(buffer, format="PNG", optimize=True)
     buffer.seek(0)
+    return buffer
 
-    return buffer  
-    
-def create_spinning_slot_gif():
-    width = 720
-    height = 420
 
+def create_spinning_slot_gif(reels):
+    """
+    高速回転→徐々に減速→左・中央・右の順で停止するGIFを生成する。
+    Discordへの画像送信は1回だけなので、PNG差し替え方式の点滅を防げる。
+    """
     frames = []
+    durations = []
 
-    for frame_index in range(36):
-        image = Image.new(
-            "RGB",
-            (width, height),
-            (24, 14, 38)
-        )
+    total_frames = 62
+    stop_frames = (36, 47, 58)
+    travel_symbols = (17, 22, 27)
+    number_gap = 55
 
-        draw = ImageDraw.Draw(image)
-
-        reel_bg = (245, 240, 255)
-        reel_border = (196, 154, 58)
-        center_line = (255, 215, 90)
-        main_text = (65, 35, 90)
-        sub_text = (155, 130, 175)
-
-        reel_width = 180
-        reel_height = 300
-        gap = 25
-
-        total_width = reel_width * 3 + gap * 2
-        start_x = (width - total_width) // 2
-        start_y = 60
-
-        try:
-            font_big = ImageFont.truetype(
-                "DejaVuSans-Bold.ttf",
-                88
-            )
-
-            font_small = ImageFont.truetype(
-                "DejaVuSans-Bold.ttf",
-                52
-            )
-
-        except Exception:
-            font_big = ImageFont.load_default()
-            font_small = ImageFont.load_default()
+    for frame_index in range(total_frames):
+        remaining_values = []
 
         for reel_index in range(3):
-            x1 = start_x + reel_index * (reel_width + gap)
-            y1 = start_y
-            x2 = x1 + reel_width
-            y2 = y1 + reel_height
+            stop_frame = stop_frames[reel_index]
+            total_distance = travel_symbols[reel_index] * number_gap
 
-            draw.rounded_rectangle(
-                (x1, y1, x2, y2),
-                radius=24,
-                fill=reel_bg,
-                outline=reel_border,
-                width=6
-            )
+            if frame_index >= stop_frame:
+                remaining = 0.0
+            else:
+                progress = frame_index / max(1, stop_frame - 1)
 
-            offset = frame_index + reel_index * 3
+                # 最初は速く、停止直前にゆっくりになる3次イージング
+                remaining = total_distance * ((1.0 - progress) ** 3)
 
-            top_number = ((offset - 1) % 9) + 1
-            center_number = (offset % 9) + 1
-            bottom_number = ((offset + 1) % 9) + 1
+                # 最後の数フレームはラインへ吸い込まれるように細かく減速
+                if stop_frame - frame_index <= 4:
+                    remaining *= (stop_frame - frame_index) / 4
 
-            top_text = str(top_number)
-            center_text = str(center_number)
-            bottom_text = str(bottom_number)
+            remaining_values.append(remaining)
 
-            top_box = draw.textbbox(
-                (0, 0),
-                top_text,
-                font=font_small
-            )
+        frame = _draw_slot_machine(reels, tuple(remaining_values))
+        frames.append(frame.convert("P", palette=Image.Palette.ADAPTIVE, colors=64))
 
-            center_box = draw.textbbox(
-                (0, 0),
-                center_text,
-                font=font_big
-            )
+        # 序盤は高速、後半は少し長く表示して減速感を強める
+        if frame_index < 24:
+            durations.append(35)
+        elif frame_index < 44:
+            durations.append(45)
+        elif frame_index < 57:
+            durations.append(65)
+        else:
+            durations.append(95)
 
-            bottom_box = draw.textbbox(
-                (0, 0),
-                bottom_text,
-                font=font_small
-            )
-
-            top_width = top_box[2] - top_box[0]
-            center_width = center_box[2] - center_box[0]
-            center_height = center_box[3] - center_box[1]
-            bottom_width = bottom_box[2] - bottom_box[0]
-
-            draw.text(
-                (
-                    x1 + (reel_width - top_width) // 2,
-                    y1 + 20
-                ),
-                top_text,
-                font=font_small,
-                fill=sub_text
-            )
-
-            draw.text(
-                (
-                    x1 + (reel_width - center_width) // 2,
-                    y1 + (reel_height - center_height) // 2 - 10
-                ),
-                center_text,
-                font=font_big,
-                fill=main_text
-            )
-
-            draw.text(
-                (
-                    x1 + (reel_width - bottom_width) // 2,
-                    y2 - 85
-                ),
-                bottom_text,
-                font=font_small,
-                fill=sub_text
-            )
-
-        line_y = start_y + reel_height // 2
-
-        draw.line(
-            (
-                start_x - 20,
-                line_y,
-                start_x + total_width + 20,
-                line_y
-            ),
-            fill=center_line,
-            width=8
-        )
-
-        frames.append(image)
+    # 最終停止画面を少し長く保持して「カチッ」と止まったように見せる
+    final_frame = _draw_slot_machine(reels, (0, 0, 0)).convert(
+        "P",
+        palette=Image.Palette.ADAPTIVE,
+        colors=64
+    )
+    for _ in range(5):
+        frames.append(final_frame.copy())
+        durations.append(120)
 
     buffer = io.BytesIO()
-
     frames[0].save(
         buffer,
         format="GIF",
         save_all=True,
         append_images=frames[1:],
-        duration=45,
-        loop=0,
-        optimize=False
+        duration=durations,
+        disposal=2,
+        optimize=True
     )
-
     buffer.seek(0)
-
     return buffer
-    
+
+
 def judge_slot_result(reels: list[int], bet: int):
     first, second, third = reels
 
@@ -680,115 +547,26 @@ class SlotMachineView(discord.ui.View):
                 url="attachment://slot.png"
             )
 
-            # 全リール回転
-            for frame in range(6):
-                move = (frame * 18) % 55
+            # GIFを1回だけ送信して、Discord側で滑らかに再生
+            spin_gif = create_spinning_slot_gif(reels)
 
-                moving_reels = tuple(
-                    ((reels[i] - frame - i * 2 - 1) % 9) + 1
-                    for i in range(3)
-                )
-
-                image = create_slot_frame(
-                    moving_reels,
-                    offsets=(
-                        move,
-                        (move + 18) % 55,
-                        (move + 36) % 55
-                    ),
-                    stopped=(False, False, False)
-                )
-
-                await interaction.edit_original_response(
-                    embed=spin_embed,
-                    attachments=[
-                        discord.File(
-                            image,
-                            filename="slot.png"
-                        )
-                    ],
-                    view=None
-                )
-
-                await asyncio.sleep(0.25)
-
-            # 左リール停止・中央と右は回転
-            for frame in range(4):
-                move = (frame * 18) % 55
-
-                moving_reels = (
-                    reels[0],
-                    ((reels[1] - frame - 2) % 9) + 1,
-                    ((reels[2] - frame - 4) % 9) + 1
-                )
-
-                image = create_slot_frame(
-                    moving_reels,
-                    offsets=(
-                        0,
-                        move,
-                        (move + 22) % 55
-                    ),
-                    stopped=(True, False, False)
-                )
-
-                await interaction.edit_original_response(
-                    embed=spin_embed,
-                    attachments=[
-                        discord.File(
-                            image,
-                            filename="slot.png"
-                        )
-                    ]
-                )
-
-                await asyncio.sleep(0.28)
-
-            # 中央リール停止・右だけ回転
-            for frame in range(4):
-                move = (frame * 14) % 55
-
-                moving_reels = (
-                    reels[0],
-                    reels[1],
-                    ((reels[2] - frame - 3) % 9) + 1
-                )
-
-                image = create_slot_frame(
-                    moving_reels,
-                    offsets=(0, 0, move),
-                    stopped=(True, True, False)
-                )
-
-                await interaction.edit_original_response(
-                    embed=spin_embed,
-                    attachments=[
-                        discord.File(
-                            image,
-                            filename="slot.png"
-                        )
-                    ]
-                )
-
-                await asyncio.sleep(0.32)
-
-            # 全停止
-            image = create_slot_frame(
-                reels,
-                offsets=(0, 0, 0),
-                stopped=(True, True, True)
+            spin_embed.set_image(
+                url="attachment://slot.gif"
             )
+
             await interaction.edit_original_response(
                 embed=spin_embed,
                 attachments=[
                     discord.File(
-                        image,
-                        filename="slot.png"
+                        spin_gif,
+                        filename="slot.gif"
                     )
-                ]
+                ],
+                view=None
             )
 
-            await asyncio.sleep(0.25)
+            # GIFの再生が終わるまで待つ
+            await asyncio.sleep(3.8)
 
             result = judge_slot_result(reels, self.bet)
 
@@ -815,10 +593,7 @@ class SlotMachineView(discord.ui.View):
                 title = f"JACKPOT - マシン #{self.machine_id}"
                 color = discord.Color.gold()
 
-            result_image = create_slot_frame(
-                reels,
-                (True, True, True)
-            )
+            result_image = create_slot_frame(reels)
             result_embed = discord.Embed(
                 title=title,
                 description=(

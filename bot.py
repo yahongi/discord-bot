@@ -194,7 +194,7 @@ SLOT_EVENT_NAMES = {
     "super_hot": "超激熱イベント"
 }
 
-def create_slot_gif():
+def create_slot_frame(center_numbers):
     width = 720
     height = 420
 
@@ -220,12 +220,6 @@ def create_slot_gif():
     except Exception:
         font_main = ImageFont.load_default()
         font_side = ImageFont.load_default()
-
-    center_numbers = [
-        random.randint(1, 9),
-        random.randint(1, 9),
-        random.randint(1, 9)
-    ]
 
     reel_x_positions = [
         120,
@@ -361,6 +355,7 @@ def create_slot_gif():
     buffer.seek(0)
 
     return buffer
+    
 def judge_slot_result(reels: list[int], bet: int):
     first, second, third = reels
 
@@ -547,7 +542,7 @@ class SlotMachineView(discord.ui.View):
             )
 
             # 黒い数字リール画像を作成
-            reel_image = create_slot_gif()
+            reel_image = create_slot_frame([1, 2, 3])
 
             # Discordへ送る画像ファイルに変換
             reel_file = discord.File(

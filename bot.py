@@ -623,12 +623,15 @@ class SlotMachineView(discord.ui.View):
         button: discord.ui.Button
     ):
         if self.running:
-            await interaction.response.send_message(
-                "すでに回転中です。",
-                ephemeral=True
-            )
-            return
+            try:
+                await interaction.response.send_message(
+                    "すでに回転中です。",
+                    ephemeral=True
+                )
+            except discord.NotFound:
+                pass
 
+            return
         self.running = True
         await interaction.response.defer()
 

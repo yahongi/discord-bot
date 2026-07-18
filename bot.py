@@ -611,22 +611,82 @@ class SlotMachineView(discord.ui.View):
                 url=interaction.user.display_avatar.url
             )
 
-            reel_file = discord.File(
-                "slot_spin.gif",
-                filename="slot_spin.gif"
+                        spin_embed.set_image(
+                url="attachment://slot.png"
             )
 
-            spin_embed.set_image(
-                url="attachment://slot_spin.gif"
+            # 全回転
+            image = create_slot_frame(
+                reels,
+                (False, False, False)
             )
 
             await interaction.edit_original_response(
                 embed=spin_embed,
-                attachments=[reel_file],
+                attachments=[
+                    discord.File(
+                        image,
+                        filename="slot.png"
+                    )
+                ],
                 view=None
             )
 
-            await asyncio.sleep(2.5)
+            await asyncio.sleep(0.45)
+
+            # 左停止
+            image = create_slot_frame(
+                reels,
+                (True, False, False)
+            )
+
+            await interaction.edit_original_response(
+                embed=spin_embed,
+                attachments=[
+                    discord.File(
+                        image,
+                        filename="slot.png"
+                    )
+                ]
+            )
+
+            await asyncio.sleep(0.35)
+
+            # 中停止
+            image = create_slot_frame(
+                reels,
+                (True, True, False)
+            )
+
+            await interaction.edit_original_response(
+                embed=spin_embed,
+                attachments=[
+                    discord.File(
+                        image,
+                        filename="slot.png"
+                    )
+                ]
+            )
+
+            await asyncio.sleep(0.35)
+
+            # 全停止
+            image = create_slot_frame(
+                reels,
+                (True, True, True)
+            )
+
+            await interaction.edit_original_response(
+                embed=spin_embed,
+                attachments=[
+                    discord.File(
+                        image,
+                        filename="slot.png"
+                    )
+                ]
+            )
+
+            await asyncio.sleep(0.25)
 
             result = judge_slot_result(reels, self.bet)
 
@@ -652,6 +712,11 @@ class SlotMachineView(discord.ui.View):
             else:
                 title = f"JACKPOT - マシン #{self.machine_id}"
                 color = discord.Color.gold()
+
+             result_image = create_slot_frame(
+                reels,
+                (True, True, True)
+            )           
 
             result_embed = discord.Embed(
                 title=title,

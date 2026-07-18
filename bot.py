@@ -573,7 +573,7 @@ class SlotMachineView(discord.ui.View):
                 f"{interaction.user.mention} が台を離れました。\n\n"
                 "台の状態：**空席**"
             ),
-            color=discord.Color.gray()
+            color=discord.Color.light_grey()
         )
 
         await interaction.response.edit_message(

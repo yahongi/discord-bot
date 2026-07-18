@@ -11,6 +11,8 @@ import pytz
 from supabase import create_client
 import random
 import asyncio
+import io
+from PIL import Image, ImageDraw, ImageFont
 
 def get_today():
     tz = pytz.timezone("Asia/Tokyo")

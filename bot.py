@@ -713,11 +713,10 @@ class SlotMachineView(discord.ui.View):
                 title = f"JACKPOT - マシン #{self.machine_id}"
                 color = discord.Color.gold()
 
-             result_image = create_slot_frame(
+            result_image = create_slot_frame(
                 reels,
                 (True, True, True)
-            )           
-
+            )
             result_embed = discord.Embed(
                 title=title,
                 description=(

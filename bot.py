@@ -736,16 +736,25 @@ class SlotMachineView(discord.ui.View):
                 url=interaction.user.display_avatar.url
             )
 
+            result_embed.set_image(
+                url="attachment://slot.png"
+            )
+
             await interaction.edit_original_response(
                 embed=result_embed,
-                attachments=[],
+                attachments=[
+                    discord.File(
+                        result_image,
+                        filename="slot.png"
+                    )
+                ],
                 view=SlotMachineView(
                     owner_id=self.owner_id,
                     machine_id=self.machine_id,
                     bet=self.bet
                 )
             )
-
+            
         except Exception as e:
             print("SLOT BUTTON ERROR:", repr(e), flush=True)
 

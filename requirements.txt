@@ -2,3 +2,4 @@ discord.py
 flask
 supabase
 pytz
+Pillow

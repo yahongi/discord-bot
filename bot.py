@@ -610,8 +610,8 @@ class SlotMachineView(discord.ui.View):
             spin_embed.set_thumbnail(
                 url=interaction.user.display_avatar.url
             )
-
-                        spin_embed.set_image(
+            
+            spin_embed.set_image(
                 url="attachment://slot.png"
             )
 

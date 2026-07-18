@@ -194,6 +194,72 @@ SLOT_EVENT_NAMES = {
     "super_hot": "超激熱イベント"
 }
 
+def create_slot_gif():
+    width = 720
+    height = 320
+
+    image = Image.new(
+        "RGB",
+        (width, height),
+        (15, 15, 15)
+    )
+
+    draw = ImageDraw.Draw(image)
+
+    try:
+        font = ImageFont.truetype(
+            "DejaVuSans-Bold.ttf",
+            120
+        )
+    except:
+        font = ImageFont.load_default()
+
+    numbers = [
+        random.randint(0, 9),
+        random.randint(0, 9),
+        random.randint(0, 9)
+    ]
+
+    x = 90
+
+    for number in numbers:
+
+        draw.rounded_rectangle(
+            (
+                x,
+                70,
+                x + 140,
+                250
+            ),
+            radius=15,
+            fill="black",
+            outline="white",
+            width=3
+        )
+
+        draw.text(
+            (
+                x + 50,
+                90
+            ),
+            str(number),
+            fill="white",
+            font=font
+        )
+
+        x += 180
+
+    buffer = io.BytesIO()
+
+    image.save(
+        buffer,
+        format="PNG"
+    )
+
+    buffer.seek(0)
+
+    return buffer
+
 def judge_slot_result(reels: list[int], bet: int):
     first, second, third = reels
 
@@ -374,13 +440,28 @@ class SlotMachineView(discord.ui.View):
                 ),
                 color=discord.Color.gold()
             )
-
+            
             spin_embed.set_thumbnail(
                 url=interaction.user.display_avatar.url
             )
 
+            # 黒い数字リール画像を作成
+            reel_image = create_slot_gif()
+
+            # Discordへ送る画像ファイルに変換
+            reel_file = discord.File(
+                reel_image,
+                filename="slot_reel.png"
+            )
+
+            # Embed内に画像を表示
+            spin_embed.set_image(
+                url="attachment://slot_reel.png"
+            )
+
             await interaction.edit_original_response(
                 embed=spin_embed,
+                attachments=[reel_file],
                 view=None
             )
 

@@ -194,74 +194,125 @@ SLOT_EVENT_NAMES = {
     "super_hot": "超激熱イベント"
 }
 
-def create_slot_frame(center_numbers, stopped=(True, True, True)):
+def create_slot_frame(
+    reels,
+    offsets=(0, 0, 0),
+    stopped=(False, False, False)
+):
     width = 500
     height = 210
 
-    image = Image.new("RGB", (width, height), (15, 15, 15))
+    image = Image.new(
+        "RGB",
+        (width, height),
+        (15, 15, 15)
+    )
     draw = ImageDraw.Draw(image)
 
     try:
-        font_big = ImageFont.truetype("DejaVuSans-Bold.ttf", 44)
-        font_small = ImageFont.truetype("DejaVuSans-Bold.ttf", 24)
+        font = ImageFont.truetype(
+            "DejaVuSans-Bold.ttf",
+            44
+        )
     except:
-        font_big = ImageFont.load_default()
-        font_small = ImageFont.load_default()
+        font = ImageFont.load_default()
 
     reel_w = 95
     reel_h = 150
     gap = 25
 
-    start_x = (width - (reel_w * 3 + gap * 2)) // 2
+    start_x = (
+        width
+        - (reel_w * 3 + gap * 2)
+    ) // 2
     start_y = 30
+
+    number_gap = 55
 
     for i in range(3):
         x = start_x + i * (reel_w + gap)
 
         draw.rounded_rectangle(
-            (x, start_y, x + reel_w, start_y + reel_h),
+            (
+                x,
+                start_y,
+                x + reel_w,
+                start_y + reel_h
+            ),
             radius=10,
             fill=(250, 250, 250),
             outline=(120, 120, 120),
             width=2
         )
 
+        reel_layer = Image.new(
+            "RGBA",
+            (reel_w, reel_h),
+            (255, 255, 255, 0)
+        )
+        reel_draw = ImageDraw.Draw(reel_layer)
+
         if stopped[i]:
-            center = center_numbers[i]
+            offset = 0
+            center_number = reels[i]
         else:
-            center = random.randint(1, 9)
+            offset = offsets[i]
+            center_number = reels[i]
 
-        top = center - 1 if center > 1 else 9
-        bottom = center + 1 if center < 9 else 1
+        numbers = []
 
-        numbers = [
-            (top, start_y + 18, font_small, (130,130,130)),
-            (center, start_y + 55, font_big, (0,0,0)),
-            (bottom, start_y + 112, font_small, (130,130,130))
-        ]
+        for position in range(-3, 4):
+            number = (
+                center_number + position - 1
+            ) % 9 + 1
 
-        for num, y, font, color in numbers:
-            text = str(num)
-            box = draw.textbbox((0,0), text, font=font)
-            tw = box[2]-box[0]
-            draw.text(
-                (x + reel_w/2 - tw/2, y),
+            y = (
+                reel_h // 2
+                + position * number_gap
+                + offset
+            )
+
+            numbers.append((number, y))
+
+        for number, y in numbers:
+            text = str(number)
+
+            box = reel_draw.textbbox(
+                (0, 0),
                 text,
-                fill=color,
                 font=font
             )
+
+            text_w = box[2] - box[0]
+            text_h = box[3] - box[1]
+
+            reel_draw.text(
+                (
+                    reel_w // 2 - text_w // 2,
+                    y - text_h // 2
+                ),
+                text,
+                fill=(0, 0, 0),
+                font=font
+            )
+
+        image.paste(
+            reel_layer,
+            (x, start_y),
+            reel_layer
+        )
 
     line_y = start_y + reel_h // 2
 
     draw.line(
         (25, line_y, 60, line_y),
-        fill=(255,215,0),
+        fill=(255, 215, 0),
         width=4
     )
 
     draw.line(
         (440, line_y, 475, line_y),
-        fill=(255,215,0),
+        fill=(255, 215, 0),
         width=4
     )
 
@@ -269,8 +320,7 @@ def create_slot_frame(center_numbers, stopped=(True, True, True)):
     image.save(buffer, format="PNG")
     buffer.seek(0)
 
-    return buffer
-    
+    return buffer    
 def create_spinning_slot_gif():
     width = 720
     height = 420
@@ -615,67 +665,104 @@ class SlotMachineView(discord.ui.View):
                 url="attachment://slot.png"
             )
 
-            # 全回転
-            image = create_slot_frame(
-                reels,
-                (False, False, False)
-            )
+            # 全リール回転
+            for frame in range(6):
+                move = (frame * 18) % 55
 
-            await interaction.edit_original_response(
-                embed=spin_embed,
-                attachments=[
-                    discord.File(
-                        image,
-                        filename="slot.png"
-                    )
-                ],
-                view=None
-            )
+                moving_reels = tuple(
+                    ((reels[i] - frame - i * 2 - 1) % 9) + 1
+                    for i in range(3)
+                )
 
-            await asyncio.sleep(0.45)
+                image = create_slot_frame(
+                    moving_reels,
+                    offsets=(
+                        move,
+                        (move + 18) % 55,
+                        (move + 36) % 55
+                    ),
+                    stopped=(False, False, False)
+                )
 
-            # 左停止
-            image = create_slot_frame(
-                reels,
-                (True, False, False)
-            )
+                await interaction.edit_original_response(
+                    embed=spin_embed,
+                    attachments=[
+                        discord.File(
+                            image,
+                            filename="slot.png"
+                        )
+                    ],
+                    view=None
+                )
 
-            await interaction.edit_original_response(
-                embed=spin_embed,
-                attachments=[
-                    discord.File(
-                        image,
-                        filename="slot.png"
-                    )
-                ]
-            )
+                await asyncio.sleep(0.25)
 
-            await asyncio.sleep(0.35)
+            # 左リール停止・中央と右は回転
+            for frame in range(4):
+                move = (frame * 18) % 55
 
-            # 中停止
-            image = create_slot_frame(
-                reels,
-                (True, True, False)
-            )
+                moving_reels = (
+                    reels[0],
+                    ((reels[1] - frame - 2) % 9) + 1,
+                    ((reels[2] - frame - 4) % 9) + 1
+                )
 
-            await interaction.edit_original_response(
-                embed=spin_embed,
-                attachments=[
-                    discord.File(
-                        image,
-                        filename="slot.png"
-                    )
-                ]
-            )
+                image = create_slot_frame(
+                    moving_reels,
+                    offsets=(
+                        0,
+                        move,
+                        (move + 22) % 55
+                    ),
+                    stopped=(True, False, False)
+                )
 
-            await asyncio.sleep(0.35)
+                await interaction.edit_original_response(
+                    embed=spin_embed,
+                    attachments=[
+                        discord.File(
+                            image,
+                            filename="slot.png"
+                        )
+                    ]
+                )
+
+                await asyncio.sleep(0.28)
+
+            # 中央リール停止・右だけ回転
+            for frame in range(4):
+                move = (frame * 14) % 55
+
+                moving_reels = (
+                    reels[0],
+                    reels[1],
+                    ((reels[2] - frame - 3) % 9) + 1
+                )
+
+                image = create_slot_frame(
+                    moving_reels,
+                    offsets=(0, 0, move),
+                    stopped=(True, True, False)
+                )
+
+                await interaction.edit_original_response(
+                    embed=spin_embed,
+                    attachments=[
+                        discord.File(
+                            image,
+                            filename="slot.png"
+                        )
+                    ]
+                )
+
+                await asyncio.sleep(0.32)
 
             # 全停止
             image = create_slot_frame(
                 reels,
-                (True, True, True)
+                offsets=(0, 0, 0),
+                stopped=(True, True, True)
             )
-
             await interaction.edit_original_response(
                 embed=spin_embed,
                 attachments=[

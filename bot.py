@@ -522,12 +522,11 @@ class SlotMachineView(discord.ui.View):
             def reel_box(a, b, c):
                 return (
                     "```text\n"
-                    "┏━━━━━━━━━━━━━━━┓\n"
-                    f"┃   {a}   │   {b}   │   {c}   ┃\n"
-                    "┗━━━━━━━━━━━━━━━┛\n"
+                    "┏━━━━━━━━━━━┓\n"
+                    f"┃ {a} │ {b} │ {c} ┃\n"
+                    "┗━━━━━━━━━━━┛\n"
                     "```"
                 )
-
             spin_embed = discord.Embed(
                 title=f"スロットマシン #{self.machine_id}",
                 description=(

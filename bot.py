@@ -693,8 +693,10 @@ class SlotMachineView(discord.ui.View):
                 url=interaction.user.display_avatar.url
             )
             
-            # 回転GIFを作成
-            reel_gif = create_spinning_slot_gif()
+            # 回転GIFを別スレッドで作成
+            reel_gif = await asyncio.to_thread(
+                create_spinning_slot_gif
+            )
 
             reel_file = discord.File(
                 reel_gif,

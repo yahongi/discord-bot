@@ -194,168 +194,83 @@ SLOT_EVENT_NAMES = {
     "super_hot": "超激熱イベント"
 }
 
-def create_slot_frame(center_numbers):
-    width = 720
-    height = 420
+def create_slot_frame(center_numbers, stopped=(True, True, True)):
+    width = 500
+    height = 210
 
-    image = Image.new(
-        "RGB",
-        (width, height),
-        (12, 12, 12)
-    )
-
+    image = Image.new("RGB", (width, height), (15, 15, 15))
     draw = ImageDraw.Draw(image)
 
     try:
-        font_main = ImageFont.truetype(
-            "DejaVuSans-Bold.ttf",
-            76
-        )
+        font_big = ImageFont.truetype("DejaVuSans-Bold.ttf", 44)
+        font_small = ImageFont.truetype("DejaVuSans-Bold.ttf", 24)
+    except:
+        font_big = ImageFont.load_default()
+        font_small = ImageFont.load_default()
 
-        font_side = ImageFont.truetype(
-            "DejaVuSans-Bold.ttf",
-            42
-        )
+    reel_w = 95
+    reel_h = 150
+    gap = 25
 
-    except Exception:
-        font_main = ImageFont.load_default()
-        font_side = ImageFont.load_default()
+    start_x = (width - (reel_w * 3 + gap * 2)) // 2
+    start_y = 30
 
-    reel_x_positions = [
-        120,
-        290,
-        460
-    ]
-
-    for index, center_number in enumerate(center_numbers):
-        x = reel_x_positions[index]
-
-        top_number = center_number - 1
-        if top_number < 1:
-            top_number = 9
-
-        bottom_number = center_number + 1
-        if bottom_number > 9:
-            bottom_number = 1
+    for i in range(3):
+        x = start_x + i * (reel_w + gap)
 
         draw.rounded_rectangle(
-            (
-                x,
-                50,
-                x + 140,
-                350
-            ),
-            radius=18,
-            fill=(0, 0, 0),
-            outline=(230, 230, 230),
-            width=3
-        )
-
-        draw.line(
-            (
-                x,
-                145,
-                x + 140,
-                145
-            ),
-            fill=(65, 65, 65),
+            (x, start_y, x + reel_w, start_y + reel_h),
+            radius=10,
+            fill=(250, 250, 250),
+            outline=(120, 120, 120),
             width=2
         )
 
-        draw.line(
-            (
-                x,
-                255,
-                x + 140,
-                255
-            ),
-            fill=(65, 65, 65),
-            width=2
-        )
+        if stopped[i]:
+            center = center_numbers[i]
+        else:
+            center = random.randint(1, 9)
 
-        top_text = str(top_number)
-        center_text = str(center_number)
-        bottom_text = str(bottom_number)
+        top = center - 1 if center > 1 else 9
+        bottom = center + 1 if center < 9 else 1
 
-        top_box = draw.textbbox(
-            (0, 0),
-            top_text,
-            font=font_side
-        )
+        numbers = [
+            (top, start_y + 18, font_small, (130,130,130)),
+            (center, start_y + 55, font_big, (0,0,0)),
+            (bottom, start_y + 112, font_small, (130,130,130))
+        ]
 
-        center_box = draw.textbbox(
-            (0, 0),
-            center_text,
-            font=font_main
-        )
+        for num, y, font, color in numbers:
+            text = str(num)
+            box = draw.textbbox((0,0), text, font=font)
+            tw = box[2]-box[0]
+            draw.text(
+                (x + reel_w/2 - tw/2, y),
+                text,
+                fill=color,
+                font=font
+            )
 
-        bottom_box = draw.textbbox(
-            (0, 0),
-            bottom_text,
-            font=font_side
-        )
-
-        top_width = top_box[2] - top_box[0]
-        top_height = top_box[3] - top_box[1]
-
-        center_width = center_box[2] - center_box[0]
-        center_height = center_box[3] - center_box[1]
-
-        bottom_width = bottom_box[2] - bottom_box[0]
-        bottom_height = bottom_box[3] - bottom_box[1]
-
-        draw.text(
-            (
-                x + 70 - top_width / 2,
-                97 - top_height / 2
-            ),
-            top_text,
-            font=font_side,
-            fill=(125, 125, 125)
-        )
-
-        draw.text(
-            (
-                x + 70 - center_width / 2,
-                200 - center_height / 2
-            ),
-            center_text,
-            font=font_main,
-            fill=(255, 255, 255)
-        )
-
-        draw.text(
-            (
-                x + 70 - bottom_width / 2,
-                305 - bottom_height / 2
-            ),
-            bottom_text,
-            font=font_side,
-            fill=(125, 125, 125)
-        )
+    line_y = start_y + reel_h // 2
 
     draw.line(
-        (
-            80,
-            200,
-            640,
-            200
-        ),
-        fill=(255, 215, 0),
-        width=3
+        (25, line_y, 60, line_y),
+        fill=(255,215,0),
+        width=4
+    )
+
+    draw.line(
+        (440, line_y, 475, line_y),
+        fill=(255,215,0),
+        width=4
     )
 
     buffer = io.BytesIO()
-
-    image.save(
-        buffer,
-        format="PNG"
-    )
-
+    image.save(buffer, format="PNG")
     buffer.seek(0)
 
     return buffer
-
+    
 def create_spinning_slot_gif():
     width = 720
     height = 420
@@ -691,18 +606,13 @@ class SlotMachineView(discord.ui.View):
                 ),
                 color=discord.Color.gold()
             )
-            
+
             spin_embed.set_thumbnail(
                 url=interaction.user.display_avatar.url
             )
-            
-            # 回転GIFを別スレッドで作成
-            reel_gif = await asyncio.to_thread(
-                create_spinning_slot_gif
-            )
 
             reel_file = discord.File(
-                reel_gif,
+                "slot_spin.gif",
                 filename="slot_spin.gif"
             )
 

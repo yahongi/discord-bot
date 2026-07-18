@@ -196,58 +196,160 @@ SLOT_EVENT_NAMES = {
 
 def create_slot_gif():
     width = 720
-    height = 320
+    height = 420
 
     image = Image.new(
         "RGB",
         (width, height),
-        (15, 15, 15)
+        (12, 12, 12)
     )
 
     draw = ImageDraw.Draw(image)
 
     try:
-        font = ImageFont.truetype(
+        font_main = ImageFont.truetype(
             "DejaVuSans-Bold.ttf",
-            120
+            76
         )
-    except:
-        font = ImageFont.load_default()
 
-    numbers = [
-        random.randint(0, 9),
-        random.randint(0, 9),
-        random.randint(0, 9)
+        font_side = ImageFont.truetype(
+            "DejaVuSans-Bold.ttf",
+            42
+        )
+
+    except Exception:
+        font_main = ImageFont.load_default()
+        font_side = ImageFont.load_default()
+
+    center_numbers = [
+        random.randint(1, 9),
+        random.randint(1, 9),
+        random.randint(1, 9)
     ]
 
-    x = 90
+    reel_x_positions = [
+        120,
+        290,
+        460
+    ]
 
-    for number in numbers:
+    for index, center_number in enumerate(center_numbers):
+        x = reel_x_positions[index]
+
+        top_number = center_number - 1
+        if top_number < 1:
+            top_number = 9
+
+        bottom_number = center_number + 1
+        if bottom_number > 9:
+            bottom_number = 1
 
         draw.rounded_rectangle(
             (
                 x,
-                70,
+                50,
                 x + 140,
-                250
+                350
             ),
-            radius=15,
-            fill="black",
-            outline="white",
+            radius=18,
+            fill=(0, 0, 0),
+            outline=(230, 230, 230),
             width=3
+        )
+
+        draw.line(
+            (
+                x,
+                145,
+                x + 140,
+                145
+            ),
+            fill=(65, 65, 65),
+            width=2
+        )
+
+        draw.line(
+            (
+                x,
+                255,
+                x + 140,
+                255
+            ),
+            fill=(65, 65, 65),
+            width=2
+        )
+
+        top_text = str(top_number)
+        center_text = str(center_number)
+        bottom_text = str(bottom_number)
+
+        top_box = draw.textbbox(
+            (0, 0),
+            top_text,
+            font=font_side
+        )
+
+        center_box = draw.textbbox(
+            (0, 0),
+            center_text,
+            font=font_main
+        )
+
+        bottom_box = draw.textbbox(
+            (0, 0),
+            bottom_text,
+            font=font_side
+        )
+
+        top_width = top_box[2] - top_box[0]
+        top_height = top_box[3] - top_box[1]
+
+        center_width = center_box[2] - center_box[0]
+        center_height = center_box[3] - center_box[1]
+
+        bottom_width = bottom_box[2] - bottom_box[0]
+        bottom_height = bottom_box[3] - bottom_box[1]
+
+        draw.text(
+            (
+                x + 70 - top_width / 2,
+                97 - top_height / 2
+            ),
+            top_text,
+            font=font_side,
+            fill=(125, 125, 125)
         )
 
         draw.text(
             (
-                x + 50,
-                90
+                x + 70 - center_width / 2,
+                200 - center_height / 2
             ),
-            str(number),
-            fill="white",
-            font=font
+            center_text,
+            font=font_main,
+            fill=(255, 255, 255)
         )
 
-        x += 180
+        draw.text(
+            (
+                x + 70 - bottom_width / 2,
+                305 - bottom_height / 2
+            ),
+            bottom_text,
+            font=font_side,
+            fill=(125, 125, 125)
+        )
+
+    draw.line(
+        (
+            80,
+            200,
+            640,
+            200
+        ),
+        fill=(255, 215, 0),
+        width=3
+    )
 
     buffer = io.BytesIO()
 
@@ -259,7 +361,6 @@ def create_slot_gif():
     buffer.seek(0)
 
     return buffer
-
 def judge_slot_result(reels: list[int], bet: int):
     first, second, third = reels
 

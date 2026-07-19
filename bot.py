@@ -515,7 +515,7 @@ class SlotMachineView(discord.ui.View):
 
             # ① 超低確率で777
             JACKPOT_RATE = 0.0005      # 0.05%（1/2000）
-            HANA_LAMP_RATE = 1.0      # 通常営業1%
+            HANA_LAMP_RATE = 0.01      # 通常営業1%
 
             hana_lamp = False
 

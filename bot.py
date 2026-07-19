@@ -287,11 +287,10 @@ def create_slot_frame(reels):
 def create_spinning_slot_gif(reels):
     """
     高速回転→徐々に減速→左・中央・右の順で停止するGIFを生成する。
-    Discordへの画像送信は1回だけなので、PNG差し替え方式の点滅を防げる。
     """
     frames = []
     durations = []
-    
+
     total_frames = 40
     stop_frames = (23, 30, 37)
     travel_symbols = (12, 16, 20)
@@ -309,39 +308,54 @@ def create_spinning_slot_gif(reels):
             else:
                 progress = frame_index / max(1, stop_frame - 1)
 
-                # 最初は速く、停止直前にゆっくりになる3次イージング
                 remaining = total_distance * ((1.0 - progress) ** 3)
 
-                # 最後の数フレームはラインへ吸い込まれるように細かく減速
                 if stop_frame - frame_index <= 4:
-                    remaining *= (stop_frame - frame_index) / 4
+                    remaining *= (
+                        stop_frame - frame_index
+                    ) / 4
 
             remaining_values.append(remaining)
 
-        frame = _draw_slot_machine(reels, tuple(remaining_values))
-        frames.append(frame.convert("P", palette=Image.Palette.ADAPTIVE, colors=64))
+        frame = _draw_slot_machine(
+            reels,
+            tuple(remaining_values)
+        )
 
-        # 序盤は高速、後半は少し長く表示して減速感を強める
-    if frame_index < 15:
-        durations.append(40)
-    elif frame_index < 27:
-        durations.append(50)
-    elif frame_index < 36:
-        durations.append(70)
-    else:
-        durations.append(100)
+        frame = frame.convert(
+            "P",
+            palette=Image.Palette.ADAPTIVE,
+            colors=64
+        )
 
-    # 最終停止画面を少し長く保持して「カチッ」と止まったように見せる
-    final_frame = _draw_slot_machine(reels, (0, 0, 0)).convert(
+        frames.append(frame)
+
+        if frame_index < 15:
+            duration = 40
+        elif frame_index < 27:
+            duration = 50
+        elif frame_index < 36:
+            duration = 70
+        else:
+            duration = 100
+
+        durations.append(duration)
+
+    final_frame = _draw_slot_machine(
+        reels,
+        (0, 0, 0)
+    ).convert(
         "P",
         palette=Image.Palette.ADAPTIVE,
         colors=64
     )
+
     for _ in range(3):
         frames.append(final_frame.copy())
         durations.append(120)
 
     buffer = io.BytesIO()
+
     frames[0].save(
         buffer,
         format="GIF",
@@ -349,8 +363,10 @@ def create_spinning_slot_gif(reels):
         append_images=frames[1:],
         duration=durations,
         disposal=2,
-        optimize=True
+        optimize=True,
+        loop=0
     )
+
     buffer.seek(0)
     return buffer
 

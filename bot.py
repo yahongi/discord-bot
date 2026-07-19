@@ -797,11 +797,13 @@ class SlotMachineView(discord.ui.View):
             
         except Exception as e:
             import traceback
-            traceback.print_exc()
+
+            error = traceback.format_exc()
+            print(error)
 
             try:
                 await interaction.followup.send(
-                    "スロット処理中にエラーが発生しました。",
+                    f"```py\n{error}\n```",
                     ephemeral=True
                 )
             except Exception:
@@ -809,7 +811,6 @@ class SlotMachineView(discord.ui.View):
 
         finally:
             self.running = False
-
     @discord.ui.button(
         label="BET変更",
         style=discord.ButtonStyle.gray,

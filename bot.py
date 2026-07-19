@@ -621,7 +621,6 @@ class SlotMachineView(discord.ui.View):
                 title = f"JACKPOT - マシン #{self.machine_id}"
                 color = discord.Color.gold()
 
-            result_image = create_slot_frame(reels)
             result_embed = discord.Embed(
                 title=title,
                 description=(
@@ -635,6 +634,9 @@ class SlotMachineView(discord.ui.View):
                     f"所持フラワー："
                     f"**{final_flower:,}フラワー**"
                 ),
+                color=color
+            )          
+            
             result_embed.set_thumbnail(
                 url=interaction.user.display_avatar.url
             )

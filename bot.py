@@ -463,32 +463,6 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # {台番号: ユーザーID}
 ACTIVE_MACHINES = {}
 
-class SlotMachineView(discord.ui.View):
-    def __init__(self, owner_id: int, machine_id: int, bet: int):
-        super().__init__(timeout=300)
-
-        self.owner_id = owner_id
-        self.machine_id = machine_id
-        self.bet = bet
-        self.running = False
-
-    async def on_timeout(self):
-        if ACTIVE_MACHINES.get(self.machine_id) == self.owner_id:
-            ACTIVE_MACHINES.pop(self.machine_id, None)
-
-    async def interaction_check(
-        self,
-        interaction: discord.Interaction
-    ) -> bool:
-        if interaction.user.id != self.owner_id:
-            await interaction.response.send_message(
-                "このスロット台は他のユーザーが操作中です。",
-                ephemeral=True
-            )
-            return False
-
-        return True
-
 class BetModal(discord.ui.Modal, title="BET金額を変更"):
 
     bet = discord.ui.TextInput(
@@ -540,6 +514,32 @@ class BetModal(discord.ui.Modal, title="BET金額を変更"):
                 "数字で入力してください。",
                 ephemeral=True
             )    
+
+class SlotMachineView(discord.ui.View):
+    def __init__(self, owner_id: int, machine_id: int, bet: int):
+        super().__init__(timeout=300)
+
+        self.owner_id = owner_id
+        self.machine_id = machine_id
+        self.bet = bet
+        self.running = False
+
+    async def on_timeout(self):
+        if ACTIVE_MACHINES.get(self.machine_id) == self.owner_id:
+            ACTIVE_MACHINES.pop(self.machine_id, None)
+
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction
+    ) -> bool:
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message(
+                "このスロット台は他のユーザーが操作中です。",
+                ephemeral=True
+            )
+            return False
+
+        return True
 
     @discord.ui.button(
         label="スロットSTART",

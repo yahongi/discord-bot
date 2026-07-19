@@ -116,15 +116,15 @@ MALE_INTRO_CHANNEL_ID = 1463538621293396152
 FEMALE_INTRO_CHANNEL_ID = 1463538649915330601
 FLOWER_LOG_CHANNEL_ID = 1526955808317898762
 TWO_MATCH_MULTIPLIERS = {
-    1: 1.5,
-    2: 1.6,
-    3: 1.7,
-    4: 1.8,
-    5: 1.9,
-    6: 2.0,
-    7: 2.1,
-    8: 2.2,
-    9: 2.3
+    1: 1.2,
+    2: 1.3,
+    3: 1.4,
+    4: 1.5,
+    5: 1.6,
+    6: 1.7,
+    7: 1.8,
+    8: 1.9,
+    9: 2.0
 }
 
 THREE_MATCH_MULTIPLIERS = {

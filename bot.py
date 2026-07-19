@@ -517,34 +517,6 @@ class BetModal(discord.ui.Modal, title="BET金額を変更"):
                 ephemeral=True
             )    
 
-def add_to_jackpot_sync(jackpot_add: int) -> int:
-    jackpot_res = (
-        supabase.table("jackpot")
-        .select("amount")
-        .eq("id", 1)
-        .execute()
-    )
-
-    if jackpot_res.data:
-        current_jackpot = int(
-            jackpot_res.data[0]["amount"]
-        )
-    else:
-        current_jackpot = 100000
-
-        supabase.table("jackpot").insert({
-            "id": 1,
-            "amount": current_jackpot
-        }).execute()
-
-    new_jackpot = current_jackpot + jackpot_add
-
-    supabase.table("jackpot").update({
-        "amount": new_jackpot
-    }).eq("id", 1).execute()
-
-    return new_jackpot
-
 class SlotMachineView(discord.ui.View):
     def __init__(self, owner_id: int, machine_id: int, bet: int):
         super().__init__(timeout=300)
@@ -624,14 +596,6 @@ class SlotMachineView(discord.ui.View):
                 "coins": after_bet,
                 "updated_at": str(get_today())
             }).execute()
-
-            # ジャックポットへ5%積立
-            jackpot_add = int(self.bet * 0.05)
-
-            current_jackpot = await asyncio.to_thread(
-                add_to_jackpot_sync,
-                jackpot_add
-            )
                         
             # ① 超低確率で777
             JACKPOT_RATE = 0.0001   # 約1/10,000
@@ -725,31 +689,6 @@ class SlotMachineView(discord.ui.View):
             await asyncio.sleep(3.8)
 
             result = judge_slot_result(reels, self.bet)
-
-            # 777なら現在のジャックポットを全額獲得
-            if result["type"] == "jackpot":
-                jackpot_res = (
-                    supabase.table("jackpot")
-                    .select("amount")
-                    .eq("id", 1)
-                    .execute()
-                )
-
-                jackpot_amount = int(
-                    jackpot_res.data[0]["amount"]
-                )
-                result["payout"] = jackpot_amount
-                result["prize"] = jackpot_amount
-                result["cashback"] = 0
-                result["text"] = (
-                    "777 ジャックポット！\n"
-                    f"獲得：{jackpot_amount:,}フラワー"
-                )
-
-                # ジャックポットを最低保証額へリセット
-                supabase.table("jackpot").update({
-                    "amount": 100000
-                }).eq("id", 1).execute()
 
             payout = result["payout"]
             final_flower = after_bet + payout

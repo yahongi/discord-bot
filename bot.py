@@ -489,6 +489,58 @@ class SlotMachineView(discord.ui.View):
 
         return True
 
+class BetModal(discord.ui.Modal, title="BET金額を変更"):
+
+    bet = discord.ui.TextInput(
+        label="BET金額",
+        placeholder="100～100000",
+        default="1000",
+        required=True
+    )
+
+    def __init__(self, view):
+        super().__init__()
+        self.view = view
+        self.bet.default = str(view.bet)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            value = int(self.bet.value)
+
+            if value < 100:
+                await interaction.response.send_message(
+                    "100フラワー以上で入力してください。",
+                    ephemeral=True
+                )
+                return
+
+            if value > 100000:
+                await interaction.response.send_message(
+                    "100000フラワー以下で入力してください。",
+                    ephemeral=True
+                )
+                return
+
+            self.view.bet = value
+
+            embed = interaction.message.embeds[0]
+
+            embed.description = (
+                f"プレイヤー：{interaction.user.mention}\n"
+                f"BET：**{self.view.bet:,}フラワー**"
+            )
+
+            await interaction.response.edit_message(
+                embed=embed,
+                view=self.view
+            )
+
+        except ValueError:
+            await interaction.response.send_message(
+                "数字で入力してください。",
+                ephemeral=True
+            )    
+
     @discord.ui.button(
         label="スロットSTART",
         style=discord.ButtonStyle.green,
@@ -707,6 +759,22 @@ class SlotMachineView(discord.ui.View):
 
         finally:
             self.running = False
+
+    @discord.ui.button(
+        label="BET変更",
+        style=discord.ButtonStyle.gray,
+        emoji="💰",
+        row=0
+    )
+    async def change_bet(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await interaction.response.send_modal(
+            BetModal(self)
+        )    
+
     @discord.ui.button(
         label="台情報を見る",
         style=discord.ButtonStyle.blurple,

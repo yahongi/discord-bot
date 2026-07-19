@@ -2974,6 +2974,7 @@ async def flower_transfer(
             ephemeral=True
         )
 
+@app_commands.default_permissions(administrator=True)
 @bot.tree.command(
     name="スロット設定パネル",
     description="本日のスロット設定配分を変更する",

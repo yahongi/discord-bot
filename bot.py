@@ -374,22 +374,24 @@ def judge_slot_result(reels: list[int], bet: int):
         # 倍率分の賞金
         prize = int(bet * multiplier)
 
-        # 賞金＋掛け金返却
-        payout = prize + bet
+        # 掛け金半額返却
+        cashback = bet // 2
+
+        # 賞金＋掛け金半額返却
+        payout = prize + cashback
 
         return {
             "type": "three",
             "payout": payout,
             "prize": prize,
-            "cashback": bet,
+            "cashback": cashback,
             "text": (
                 f"{first}が3つ揃い・{multiplier:g}倍\n"
                 f"賞金：{prize:,}フラワー\n"
-                f"掛け金返却：{bet:,}フラワー"
+                f"掛け金返却：{cashback:,}フラワー"
             )
         }
-
-    # 2つ揃い
+        # 2つ揃い
     matched_number = None
 
     if first == second:
@@ -405,21 +407,23 @@ def judge_slot_result(reels: list[int], bet: int):
         # 倍率分の賞金
         prize = int(bet * multiplier)
 
-        # 賞金＋掛け金返却
-        payout = prize + bet
+        # 掛け金半額返却
+        cashback = bet // 2
+
+        # 賞金＋掛け金半額返却
+        payout = prize + cashback
 
         return {
             "type": "two",
             "payout": payout,
             "prize": prize,
-            "cashback": bet,
+            "cashback": cashback,
             "text": (
                 f"{matched_number}が2つ揃い・{multiplier:g}倍\n"
                 f"賞金：{prize:,}フラワー\n"
-                f"掛け金返却：{bet:,}フラワー"
+                f"掛け金返却：{cashback:,}フラワー"
             )
         }
-
     return {
         "type": "lose",
         "payout": 0,

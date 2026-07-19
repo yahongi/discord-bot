@@ -116,26 +116,26 @@ MALE_INTRO_CHANNEL_ID = 1463538621293396152
 FEMALE_INTRO_CHANNEL_ID = 1463538649915330601
 FLOWER_LOG_CHANNEL_ID = 1526955808317898762
 TWO_MATCH_MULTIPLIERS = {
-    1: 1.1,
-    2: 1.2,
-    3: 1.3,
-    4: 1.4,
-    5: 1.5,
-    6: 1.6,
-    7: 1.7,
-    8: 1.8,
-    9: 1.9
+    1: 1.5,
+    2: 1.6,
+    3: 1.7,
+    4: 1.8,
+    5: 1.9,
+    6: 2.0,
+    7: 2.1,
+    8: 2.2,
+    9: 2.3
 }
 
 THREE_MATCH_MULTIPLIERS = {
-    1: 2.0,
-    2: 2.5,
-    3: 3.0,
-    4: 4.0,
-    5: 5.0,
-    6: 6.0,
-    8: 8.0,
-    9: 9.0
+    1: 3.0,
+    2: 3.5,
+    3: 4.0,
+    4: 5.0,
+    5: 6.0,
+    6: 7.0,
+    8: 9.0,
+    9: 10.0
 }
 
 SLOT_INFO_PRICES = {
@@ -364,16 +364,29 @@ def judge_slot_result(reels: list[int], bet: int):
             return {
                 "type": "jackpot",
                 "payout": 0,
+                "prize": 0,
+                "cashback": 0,
                 "text": "777 ジャックポット"
             }
 
         multiplier = THREE_MATCH_MULTIPLIERS[first]
-        payout = int(bet * multiplier)
+
+        # 倍率分の賞金
+        prize = int(bet * multiplier)
+
+        # 賞金＋掛け金返却
+        payout = prize + bet
 
         return {
             "type": "three",
             "payout": payout,
-            "text": f"{first}が3つ揃い・{multiplier:g}倍"
+            "prize": prize,
+            "cashback": bet,
+            "text": (
+                f"{first}が3つ揃い・{multiplier:g}倍\n"
+                f"賞金：{prize:,}フラワー\n"
+                f"掛け金返却：{bet:,}フラワー"
+            )
         }
 
     # 2つ揃い
@@ -388,20 +401,33 @@ def judge_slot_result(reels: list[int], bet: int):
 
     if matched_number is not None:
         multiplier = TWO_MATCH_MULTIPLIERS[matched_number]
-        payout = int(bet * multiplier)
+
+        # 倍率分の賞金
+        prize = int(bet * multiplier)
+
+        # 賞金＋掛け金返却
+        payout = prize + bet
 
         return {
             "type": "two",
             "payout": payout,
-            "text": f"{matched_number}が2つ揃い・{multiplier:g}倍"
+            "prize": prize,
+            "cashback": bet,
+            "text": (
+                f"{matched_number}が2つ揃い・{multiplier:g}倍\n"
+                f"賞金：{prize:,}フラワー\n"
+                f"掛け金返却：{bet:,}フラワー"
+            )
         }
 
     return {
         "type": "lose",
         "payout": 0,
+        "prize": 0,
+        "cashback": 0,
         "text": "ハズレ"
     }
-
+    
 INTRO_TEMPLATE = """【名前】
 【年齢】
 【好きなタイプ】

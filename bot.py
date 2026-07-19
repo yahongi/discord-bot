@@ -513,12 +513,31 @@ class SlotMachineView(discord.ui.View):
                 "updated_at": str(get_today())
             }).execute()
 
-            reels = [
-                random.randint(1, 9),
-                random.randint(1, 9),
-                random.randint(1, 9)
-            ]
+            # ① 超低確率で777
+            JACKPOT_RATE = 0.0005      # 0.05%（1/2000）
+            HANA_LAMP_RATE = 1.0      # 通常営業1%
 
+            hana_lamp = False
+
+            if random.random() < JACKPOT_RATE:
+                reels = [7, 7, 7]
+
+            elif random.random() < HANA_LAMP_RATE:
+                hana_lamp = True
+
+                symbol = random.choice([
+                    1, 2, 3, 4, 5, 6, 8, 9   # 7は除外
+                ])
+
+                reels = [symbol, symbol, symbol]
+
+            else:
+                reels = [
+                    random.randint(1, 9),
+                    random.randint(1, 9),
+                    random.randint(1, 9)
+                ]
+                
             def reel_box(a, b, c):
                 return (
                     "```text\n"
@@ -527,17 +546,27 @@ class SlotMachineView(discord.ui.View):
                     "┗━━━━━━━━━━━┛\n"
                     "```"
                 )
+                
+            if hana_lamp:
+                lamp_text = (
+                    "🌼━━━━━━━━━━━━🌼\n"
+                    "✨ ハナランプ点灯！ ✨\n"
+                    "🌼━━━━━━━━━━━━🌼\n\n"
+                )
+            else:
+                lamp_text = ""
+                
             spin_embed = discord.Embed(
                 title=f"スロットマシン #{self.machine_id}",
                 description=(
                     f"プレイヤー：{interaction.user.mention}\n"
                     f"BET：**{self.bet:,}フラワー**\n\n"
+                    f"{lamp_text}"
                     f"{reel_box('?', '?', '?')}\n"
                     "リール回転中..."
                 ),
                 color=discord.Color.gold()
             )
-
             spin_embed.set_thumbnail(
                 url=interaction.user.display_avatar.url
             )
@@ -598,6 +627,7 @@ class SlotMachineView(discord.ui.View):
                 description=(
                     f"プレイヤー：{interaction.user.mention}\n"
                     f"BET：**{self.bet:,}フラワー**\n\n"
+                    f"{lamp_text}"
                     f"{reel_box(reels[0], reels[1], reels[2])}\n"
                     f"結果：**{result['text']}**\n\n"
                     f"配当：**{payout:,}フラワー**\n"
@@ -605,9 +635,6 @@ class SlotMachineView(discord.ui.View):
                     f"所持フラワー："
                     f"**{final_flower:,}フラワー**"
                 ),
-                color=color
-            )
-
             result_embed.set_thumbnail(
                 url=interaction.user.display_avatar.url
             )

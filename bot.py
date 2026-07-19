@@ -596,9 +596,9 @@ class SlotMachineView(discord.ui.View):
             }).execute()
 
             # ① 超低確率で777
-            JACKPOT_RATE = 0.0005      # 0.05%（1/2000）
-            HANA_LAMP_RATE = 0.01      # 通常営業1%
-
+            JACKPOT_RATE = 0.0001   # 約1/10,000
+            HANA_LAMP_RATE = 0.003     # 0.3%（約1/333）
+            
             hana_lamp = False
 
             if random.random() < JACKPOT_RATE:
@@ -614,11 +614,19 @@ class SlotMachineView(discord.ui.View):
                 reels = [symbol, symbol, symbol]
 
             else:
-                reels = [
-                    random.randint(1, 9),
-                    random.randint(1, 9),
-                    random.randint(1, 9)
-                ]
+                while True:
+                    reels = [
+                        random.randint(1, 9),
+                        random.randint(1, 9),
+                        random.randint(1, 9)
+                    ]
+
+                    # 通常抽選では3揃いをかなり出にくくする
+                    if reels[0] == reels[1] == reels[2]:
+                        if random.random() < 0.20:
+                            break
+                    else:
+                        break
                 
             def reel_box(a, b, c):
                 return (

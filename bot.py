@@ -602,16 +602,25 @@ class SlotMachineView(discord.ui.View):
                 supabase.table("jackpot")
                 .select("amount")
                 .eq("id", 1)
-                .single()
                 .execute()
             )
 
-            current_jackpot = jackpot_res.data["amount"]
+            if jackpot_res.data:
+                current_jackpot = int(
+                    jackpot_res.data[0]["amount"]
+                )
+            else:
+                current_jackpot = 100000
+
+                supabase.table("jackpot").insert({
+                    "id": 1,
+                    "amount": current_jackpot
+                }).execute()
 
             supabase.table("jackpot").update({
                 "amount": current_jackpot + jackpot_add
             }).eq("id", 1).execute()
-
+            
             # ① 超低確率で777
             JACKPOT_RATE = 0.0001   # 約1/10,000
             HANA_LAMP_RATE = 0.003  # 約1/333
@@ -811,6 +820,7 @@ class SlotMachineView(discord.ui.View):
 
         finally:
             self.running = False
+            
     @discord.ui.button(
         label="BET変更",
         style=discord.ButtonStyle.gray,

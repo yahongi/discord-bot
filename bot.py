@@ -363,10 +363,10 @@ def judge_slot_result(reels: list[int], bet: int):
         if first == 7:
             return {
                 "type": "jackpot",
-                "payout": 0,
-                "prize": 0,
+                "payout": bet * 100,
+                "prize": bet * 100,
                 "cashback": 0,
-                "text": "777 ジャックポット"
+                "text": "777 ジャックポット！"
             }
 
         multiplier = THREE_MATCH_MULTIPLIERS[first]
@@ -391,7 +391,8 @@ def judge_slot_result(reels: list[int], bet: int):
                 f"掛け金返却：{cashback:,}フラワー"
             )
         }
-        # 2つ揃い
+
+    # 2つ揃い
     matched_number = None
 
     if first == second:
@@ -424,6 +425,7 @@ def judge_slot_result(reels: list[int], bet: int):
                 f"掛け金返却：{cashback:,}フラワー"
             )
         }
+
     return {
         "type": "lose",
         "payout": 0,

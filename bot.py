@@ -245,11 +245,11 @@ def _draw_slot_machine(
         offset = remaining % number_gap
 
         # remaining=0 のとき、指定された結果が中央にぴったり止まる
-        center_number = ((int(reels[i]) - passed_symbols - 1) % 9) + 1
+        center_number = ((int(reels[i]) + passed_symbols - 1) % 9) + 1
 
         for position in range(-4, 5):
             number = ((center_number + position - 1) % 9) + 1
-            y = center_y + position * number_gap + offset
+            y = center_y + position * number_gap - offset          
             text = str(number)
             box = reel_draw.textbbox((0, 0), text, font=font)
             text_w = box[2] - box[0]

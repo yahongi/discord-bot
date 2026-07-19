@@ -206,19 +206,19 @@ def _draw_slot_machine(
     remaining_pixels=(0.0, 0.0, 0.0)
 ):
     """スロット画像を1フレーム生成する。remaining_pixelsは停止までの残り移動量。"""
-    width = 500
-    height = 210
-    reel_w = 95
-    reel_h = 150
-    gap = 25
-    number_gap = 55
+    width = 400
+    height = 170
+    reel_w = 76
+    reel_h = 120
+    gap = 20
+    number_gap = 44
     start_x = (width - (reel_w * 3 + gap * 2)) // 2
-    start_y = 30
+    start_y = 25
     center_y = reel_h // 2
 
     image = Image.new("RGB", (width, height), (15, 15, 15))
     draw = ImageDraw.Draw(image)
-    font = _get_slot_font(44)
+    font = _get_slot_font(36)
 
     for i in range(3):
         x = start_x + i * (reel_w + gap)
@@ -269,8 +269,8 @@ def _draw_slot_machine(
 
     # 中央の当たりライン
     line_y = start_y + reel_h // 2
-    draw.line((25, line_y, 60, line_y), fill=(255, 215, 0), width=4)
-    draw.line((440, line_y, 475, line_y), fill=(255, 215, 0), width=4)
+    draw.line((20, line_y, 48, line_y), fill=(255, 215, 0), width=3)
+    draw.line((352, line_y, 380, line_y), fill=(255, 215, 0), width=3)
 
     return image
 
@@ -291,11 +291,11 @@ def create_spinning_slot_gif(reels):
     """
     frames = []
     durations = []
-
-    total_frames = 62
-    stop_frames = (36, 47, 58)
-    travel_symbols = (17, 22, 27)
-    number_gap = 55
+    
+    total_frames = 40
+    stop_frames = (23, 30, 37)
+    travel_symbols = (12, 16, 20)
+    number_gap = 44
 
     for frame_index in range(total_frames):
         remaining_values = []
@@ -322,14 +322,14 @@ def create_spinning_slot_gif(reels):
         frames.append(frame.convert("P", palette=Image.Palette.ADAPTIVE, colors=64))
 
         # 序盤は高速、後半は少し長く表示して減速感を強める
-        if frame_index < 24:
-            durations.append(35)
-        elif frame_index < 44:
-            durations.append(45)
-        elif frame_index < 57:
-            durations.append(65)
-        else:
-            durations.append(95)
+    if frame_index < 15:
+        durations.append(40)
+    elif frame_index < 27:
+        durations.append(50)
+    elif frame_index < 36:
+        durations.append(70)
+    else:
+        durations.append(100)
 
     # 最終停止画面を少し長く保持して「カチッ」と止まったように見せる
     final_frame = _draw_slot_machine(reels, (0, 0, 0)).convert(
@@ -337,7 +337,7 @@ def create_spinning_slot_gif(reels):
         palette=Image.Palette.ADAPTIVE,
         colors=64
     )
-    for _ in range(5):
+    for _ in range(3):
         frames.append(final_frame.copy())
         durations.append(120)
 
@@ -686,7 +686,7 @@ class SlotMachineView(discord.ui.View):
             )
 
             # GIFの再生が終わるまで待つ
-            await asyncio.sleep(3.8)
+            await asyncio.sleep(3.0)
 
             result = judge_slot_result(reels, self.bet)
 

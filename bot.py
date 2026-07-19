@@ -595,9 +595,26 @@ class SlotMachineView(discord.ui.View):
                 "updated_at": str(get_today())
             }).execute()
 
+            # ジャックポットへ5%積立
+            jackpot_add = int(self.bet * 0.05)
+
+            jackpot_res = (
+                supabase.table("jackpot")
+                .select("amount")
+                .eq("id", 1)
+                .single()
+                .execute()
+            )
+
+            current_jackpot = jackpot_res.data["amount"]
+
+            supabase.table("jackpot").update({
+                "amount": current_jackpot + jackpot_add
+            }).eq("id", 1).execute()
+
             # ① 超低確率で777
             JACKPOT_RATE = 0.0001   # 約1/10,000
-            HANA_LAMP_RATE = 0.003     # 0.3%（約1/333）
+            HANA_LAMP_RATE = 0.003  # 約1/333
             
             hana_lamp = False
 
@@ -688,10 +705,35 @@ class SlotMachineView(discord.ui.View):
 
             result = judge_slot_result(reels, self.bet)
 
+            # 777なら現在のジャックポットを全額獲得
+            if result["type"] == "jackpot":
+                jackpot_res = (
+                    supabase.table("jackpot")
+                    .select("amount")
+                    .eq("id", 1)
+                    .single()
+                    .execute()
+                )
+
+                jackpot_amount = int(jackpot_res.data["amount"])
+
+                result["payout"] = jackpot_amount
+                result["prize"] = jackpot_amount
+                result["cashback"] = 0
+                result["text"] = (
+                    "777 ジャックポット！\n"
+                    f"獲得：{jackpot_amount:,}フラワー"
+                )
+
+                # ジャックポットを最低保証額へリセット
+                supabase.table("jackpot").update({
+                    "amount": 100000
+                }).eq("id", 1).execute()
+
             payout = result["payout"]
             final_flower = after_bet + payout
             profit = payout - self.bet
-
+            
             supabase.table("coins").upsert({
                 "user_id": interaction.user.id,
                 "coins": final_flower,

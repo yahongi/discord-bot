@@ -661,7 +661,8 @@ class SlotMachineView(discord.ui.View):
             )
             
         except Exception as e:
-            print("SLOT BUTTON ERROR:", repr(e), flush=True)
+            import traceback
+            traceback.print_exc()
 
             try:
                 await interaction.followup.send(
@@ -673,7 +674,6 @@ class SlotMachineView(discord.ui.View):
 
         finally:
             self.running = False
-
     @discord.ui.button(
         label="台情報を見る",
         style=discord.ButtonStyle.blurple,

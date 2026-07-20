@@ -194,7 +194,7 @@ SLOT_EVENT_NAMES = {
     "super_hot": "超激熱イベント"
 }
 
-SLOT_SPIN_GIF = None
+SLOT_SPIN_GIFS = []
 
 def _get_slot_font(size: int):
     try:
@@ -688,11 +688,11 @@ class SlotMachineView(discord.ui.View):
             spin_embed.set_image(
                 url="attachment://slot.gif"
             )
-
+            
             spin_gif = io.BytesIO(
-                SLOT_SPIN_GIF.getvalue()
+                random.choice(SLOT_SPIN_GIFS).getvalue()
             )
-
+            
             await interaction.edit_original_response(
                 embed=spin_embed,
                 attachments=[
@@ -3371,16 +3371,25 @@ async def on_ready():
     for cmd in synced:
         print(cmd.name, flush=True)
         
-    global SLOT_SPIN_GIF
+    global SLOT_SPIN_GIFS
 
     print("スロットGIF生成中...", flush=True)
 
-    SLOT_SPIN_GIF = create_spinning_slot_gif(
-        [1, 5, 9]
-    )
+    SLOT_SPIN_GIFS.clear()
+
+    for _ in range(20):
+        reels = [
+            random.randint(1, 9),
+            random.randint(1, 9),
+            random.randint(1, 9)
+        ]
+
+        SLOT_SPIN_GIFS.append(
+            create_spinning_slot_gif(reels)
+        )
 
     print("スロットGIF生成完了", flush=True)
-
+    
 @bot.event
 async def on_voice_state_update(member, before, after):
     if member.bot:

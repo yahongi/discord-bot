@@ -301,14 +301,21 @@ def create_spinning_slot_gif(reels):
 
         for reel_index in range(3):
             stop_frame = stop_frames[reel_index]
-            total_distance = travel_symbols[reel_index] * number_gap
+            total_distance = (
+                travel_symbols[reel_index] * number_gap
+            )
 
             if frame_index >= stop_frame:
                 remaining = 0.0
             else:
-                progress = frame_index / max(1, stop_frame - 1)
+                progress = (
+                    frame_index / max(1, stop_frame - 1)
+                )
 
-                remaining = total_distance * ((1.0 - progress) ** 3)
+                remaining = (
+                    total_distance
+                    * ((1.0 - progress) ** 3)
+                )
 
                 if stop_frame - frame_index <= 4:
                     remaining *= (
@@ -330,11 +337,11 @@ def create_spinning_slot_gif(reels):
 
         frames.append(frame)
 
-        if frame_index < 15:
+        if frame_index < 12:
             duration = 40
-        elif frame_index < 27:
+        elif frame_index < 21:
             duration = 50
-        elif frame_index < 36:
+        elif frame_index < 29:
             duration = 70
         else:
             duration = 100
@@ -350,10 +357,10 @@ def create_spinning_slot_gif(reels):
         colors=48
     )
 
-for _ in range(2):
-    frames.append(final_frame.copy())
-    durations.append(100)
-    
+    for _ in range(2):
+        frames.append(final_frame.copy())
+        durations.append(100)
+
     buffer = io.BytesIO()
 
     frames[0].save(
@@ -365,9 +372,10 @@ for _ in range(2):
         disposal=2,
         optimize=True
     )
+
     buffer.seek(0)
     return buffer
-
+    
 def judge_slot_result(reels: list[int], bet: int):
     first, second, third = reels
 

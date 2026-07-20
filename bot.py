@@ -363,10 +363,8 @@ def create_spinning_slot_gif(reels):
         append_images=frames[1:],
         duration=durations,
         disposal=2,
-        optimize=True,
-        loop=0
+        optimize=True
     )
-
     buffer.seek(0)
     return buffer
 

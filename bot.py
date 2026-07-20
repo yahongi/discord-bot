@@ -585,7 +585,10 @@ class SlotMachineView(discord.ui.View):
 
             return
         self.running = True
-        await interaction.response.defer()
+        
+        await interaction.response.defer(
+            thinking=True
+        )
 
         try:
             balance_res = await asyncio.to_thread(

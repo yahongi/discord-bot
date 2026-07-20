@@ -291,9 +291,9 @@ def create_spinning_slot_gif(reels):
     frames = []
     durations = []
 
-    total_frames = 40
-    stop_frames = (23, 30, 37)
-    travel_symbols = (12, 16, 20)
+    total_frames = 32
+    stop_frames = (18, 24, 30)
+    travel_symbols = (10, 13, 16)
     number_gap = 44
 
     for frame_index in range(total_frames):
@@ -325,7 +325,7 @@ def create_spinning_slot_gif(reels):
         frame = frame.convert(
             "P",
             palette=Image.Palette.ADAPTIVE,
-            colors=64
+            colors=48
         )
 
         frames.append(frame)
@@ -347,13 +347,13 @@ def create_spinning_slot_gif(reels):
     ).convert(
         "P",
         palette=Image.Palette.ADAPTIVE,
-        colors=64
+        colors=48
     )
 
-    for _ in range(3):
-        frames.append(final_frame.copy())
-        durations.append(120)
-
+for _ in range(2):
+    frames.append(final_frame.copy())
+    durations.append(100)
+    
     buffer = io.BytesIO()
 
     frames[0].save(

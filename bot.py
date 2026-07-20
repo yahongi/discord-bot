@@ -194,6 +194,8 @@ SLOT_EVENT_NAMES = {
     "super_hot": "超激熱イベント"
 }
 
+SLOT_SPIN_GIF = None
+
 def _get_slot_font(size: int):
     try:
         return ImageFont.truetype("DejaVuSans-Bold.ttf", size)
@@ -288,6 +290,8 @@ def create_spinning_slot_gif(reels):
     """
     高速回転→徐々に減速→左・中央・右の順で停止するGIFを生成する。
     """
+    reels = [1, 5, 9]
+
     frames = []
     durations = []
 
@@ -367,7 +371,6 @@ def create_spinning_slot_gif(reels):
     )
     buffer.seek(0)
     return buffer
-
 
 def judge_slot_result(reels: list[int], bet: int):
     first, second, third = reels
@@ -677,22 +680,17 @@ class SlotMachineView(discord.ui.View):
                 ),
                 color=discord.Color.gold()
             )
+            
             spin_embed.set_thumbnail(
                 url=interaction.user.display_avatar.url
             )
-            
-            spin_embed.set_image(
-                url="attachment://slot.png"
-            )
 
-            # GIFを1回だけ送信して、Discord側で滑らかに再生
-            spin_gif = await asyncio.to_thread(
-                create_spinning_slot_gif,
-                reels
-            )    
-            
             spin_embed.set_image(
                 url="attachment://slot.gif"
+            )
+
+            spin_gif = io.BytesIO(
+                SLOT_SPIN_GIF.getvalue()
             )
 
             await interaction.edit_original_response(
@@ -705,7 +703,7 @@ class SlotMachineView(discord.ui.View):
                 ],
                 view=None
             )
-
+            
             # GIFの再生が終わるまで待つ
             await asyncio.sleep(3.0)
 
@@ -3372,6 +3370,16 @@ async def on_ready():
     print(f"同期したコマンド数: {len(synced)}", flush=True)
     for cmd in synced:
         print(cmd.name, flush=True)
+        
+    global SLOT_SPIN_GIF
+
+    print("スロットGIF生成中...", flush=True)
+
+    SLOT_SPIN_GIF = create_spinning_slot_gif(
+        [1, 5, 9]
+    )
+
+    print("スロットGIF生成完了", flush=True)
 
 @bot.event
 async def on_voice_state_update(member, before, after):

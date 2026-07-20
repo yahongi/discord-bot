@@ -583,17 +583,19 @@ class SlotMachineView(discord.ui.View):
         await interaction.response.defer()
 
         try:
-            balance_res = supabase.table("coins").select("*").eq(
-                "user_id",
-                interaction.user.id
-            ).execute()
+            balance_res = await asyncio.to_thread(
+                lambda: supabase.table("coins")
+                .select("*")
+                .eq("user_id", interaction.user.id)
+                .execute()
+            )
 
             current_flower = (
                 balance_res.data[0]["coins"]
                 if balance_res.data
                 else 0
             )
-
+            
             if current_flower < self.bet:
                 self.running = False
 
@@ -607,12 +609,14 @@ class SlotMachineView(discord.ui.View):
 
             after_bet = current_flower - self.bet
 
-            supabase.table("coins").upsert({
-                "user_id": interaction.user.id,
-                "coins": after_bet,
-                "updated_at": str(get_today())
-            }).execute()
-                        
+            await asyncio.to_thread(
+                lambda: supabase.table("coins").upsert({
+                    "user_id": interaction.user.id,
+                    "coins": after_bet,
+                    "updated_at": str(get_today())
+                }).execute()
+            )
+            
             # ① 超低確率で777
             JACKPOT_RATE = 0.0001   # 約1/10,000
             HANA_LAMP_RATE = 0.003  # 約1/333
@@ -684,8 +688,11 @@ class SlotMachineView(discord.ui.View):
             )
 
             # GIFを1回だけ送信して、Discord側で滑らかに再生
-            spin_gif = create_spinning_slot_gif(reels)
-
+            spin_gif = await asyncio.to_thread(
+                create_spinning_slot_gif,
+                reels
+            )    
+            
             spin_embed.set_image(
                 url="attachment://slot.gif"
             )

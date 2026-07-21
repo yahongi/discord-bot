@@ -601,9 +601,7 @@ class SlotMachineView(discord.ui.View):
             return
         self.running = True
         
-        await interaction.response.defer(
-            thinking=True
-        )
+        await interaction.response.defer()
 
         try:
             balance_res = await asyncio.to_thread(
@@ -784,7 +782,7 @@ class SlotMachineView(discord.ui.View):
                 reels
             )       
             
-            await interaction.edit_original_response(
+            await interaction.message.edit(
                 embed=spin_embed,
                 attachments=[
                     discord.File(
@@ -850,7 +848,7 @@ class SlotMachineView(discord.ui.View):
                 url="attachment://slot.png"
             )
 
-            await interaction.edit_original_response(
+            await interaction.message.edit(
                 embed=result_embed,
                 attachments=[
                     discord.File(

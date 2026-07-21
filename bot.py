@@ -187,6 +187,15 @@ SLOT_EVENT_DISTRIBUTIONS = {
     }
 }
 
+SETTING_RATES = {
+    1: {"two": 0.16, "three": 0.004},
+    2: {"two": 0.18, "three": 0.006},
+    3: {"two": 0.21, "three": 0.009},
+    4: {"two": 0.24, "three": 0.013},
+    5: {"two": 0.30, "three": 0.023},
+    6: {"two": 0.38, "three": 0.032},
+}
+
 SLOT_EVENT_NAMES = {
     "normal": "通常営業",
     "flower": "フラワーデー",
@@ -625,38 +634,106 @@ class SlotMachineView(discord.ui.View):
                 }).execute()
             )
             
-            # ① 超低確率で777
-            JACKPOT_RATE = 0.0001   # 約1/10,000
-            HANA_LAMP_RATE = 0.003  # 約1/333
-            
+            # この台の最新設定を取得
+            setting_date = get_slot_setting_date()
+
+            machine_res = await asyncio.to_thread(
+                lambda: supabase.table("slot_machine_settings")
+                .select("setting")
+                .eq("machine_id", self.machine_id)
+                .eq("setting_date", setting_date)
+                .limit(1)
+                .execute()
+            )
+
+            # 設定が見つからなければ設定1として扱う
+            if machine_res.data:
+                setting = int(machine_res.data[0]["setting"])
+            else:
+                setting = 1
+
+            rates = SETTING_RATES.get(
+                setting,
+                SETTING_RATES[1]
+            )
+
+            two_rate = rates["two"]
+            three_rate = rates["three"]
+
+            JACKPOT_RATE = 0.0001   # 777：約1/10,000
+            HANA_LAMP_RATE = 0.003  # ハナ：約1/333
+
             hana_lamp = False
 
-            if random.random() < JACKPOT_RATE:
+            # 1回の乱数で抽選結果を決定
+            roll = random.random()
+
+            jackpot_border = JACKPOT_RATE
+            hana_border = jackpot_border + HANA_LAMP_RATE
+            three_border = hana_border + three_rate
+            two_border = three_border + two_rate
+
+            if roll < jackpot_border:
+                # 777
                 reels = [7, 7, 7]
 
-            elif random.random() < HANA_LAMP_RATE:
+            elif roll < hana_border:
+                # ハナランプ付き3揃い
                 hana_lamp = True
 
                 symbol = random.choice([
-                    1, 2, 3, 4, 5, 6, 8, 9   # 7は除外
+                    1, 2, 3, 4, 5, 6, 8, 9
                 ])
 
                 reels = [symbol, symbol, symbol]
 
-            else:
-                while True:
-                    reels = [
-                        random.randint(1, 9),
-                        random.randint(1, 9),
-                        random.randint(1, 9)
-                    ]
+            elif roll < three_border:
+                # 通常3揃い
+                # 777と区別するため7は除外
+                symbol = random.choice([
+                    1, 2, 3, 4, 5, 6, 8, 9
+                ])
 
-                    # 通常抽選では3揃いをかなり出にくくする
-                    if reels[0] == reels[1] == reels[2]:
-                        if random.random() < 0.20:
-                            break
-                    else:
-                        break
+                reels = [symbol, symbol, symbol]
+
+            elif roll < two_border:
+                # 2揃い
+                same_symbol = random.randint(1, 9)
+
+                different_symbols = [
+                    number
+                    for number in range(1, 10)
+                    if number != same_symbol
+                ]
+
+                different_symbol = random.choice(
+                    different_symbols
+                )
+
+                reels = random.choice([
+                    [
+                        same_symbol,
+                        same_symbol,
+                        different_symbol
+                    ],
+                    [
+                        same_symbol,
+                        different_symbol,
+                        same_symbol
+                    ],
+                    [
+                        different_symbol,
+                        same_symbol,
+                        same_symbol
+                    ]
+                ])
+
+            else:
+                # は、はずれーーｗｗｗ：必ず3つとも違う数字
+                reels = random.sample(
+                    range(1, 10),
+                    3
+                )
                 
             def reel_box(a, b, c):
                 return (

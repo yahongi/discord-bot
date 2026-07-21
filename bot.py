@@ -782,7 +782,7 @@ class SlotMachineView(discord.ui.View):
                 reels
             )       
             
-            await interaction.message.edit(
+            await interaction.edit_original_response(
                 embed=spin_embed,
                 attachments=[
                     discord.File(
@@ -848,7 +848,7 @@ class SlotMachineView(discord.ui.View):
                 url="attachment://slot.png"
             )
 
-            await interaction.message.edit(
+            await interaction.edit_original_response(
                 embed=result_embed,
                 attachments=[
                     discord.File(

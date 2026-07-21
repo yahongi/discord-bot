@@ -391,7 +391,11 @@ def create_spinning_slot_gif(reels):
     buffer.seek(0)
     return buffer
     
-def judge_slot_result(reels: list[int], bet: int):
+def judge_slot_result(
+    reels: list[int],
+    bet: int,
+    hana_lamp: bool = False
+):
     first, second, third = reels
 
     # 3つ揃い
@@ -409,6 +413,9 @@ def judge_slot_result(reels: list[int], bet: int):
 
         # 倍率分の賞金
         prize = int(bet * multiplier)
+        
+        if hana_lamp:
+            prize *= 5
 
         # 掛け金半額返却
         cashback = bet // 2
@@ -416,16 +423,27 @@ def judge_slot_result(reels: list[int], bet: int):
         # 賞金＋掛け金半額返却
         payout = prize + cashback
 
+        if hana_lamp:
+            result_text = (
+                f"{first}が3つ揃い・{multiplier:g}倍\n"
+                f"🌸 花ランプ：5倍\n"
+                f"最終倍率：{multiplier * 5:g}倍\n"
+                f"賞金：{prize:,}フラワー\n"
+                f"掛け金返却：{cashback:,}フラワー"
+            )
+        else:
+            result_text = (
+                f"{first}が3つ揃い・{multiplier:g}倍\n"
+                f"賞金：{prize:,}フラワー\n"
+                f"掛け金返却：{cashback:,}フラワー"
+            )
+
         return {
             "type": "three",
             "payout": payout,
             "prize": prize,
             "cashback": cashback,
-            "text": (
-                f"{first}が3つ揃い・{multiplier:g}倍\n"
-                f"賞金：{prize:,}フラワー\n"
-                f"掛け金返却：{cashback:,}フラワー"
-            )
+            "text": result_text
         }
 
     # 2つ揃い
@@ -443,6 +461,9 @@ def judge_slot_result(reels: list[int], bet: int):
 
         # 倍率分の賞金
         prize = int(bet * multiplier)
+        
+        if hana_lamp:
+            prize *= 5
 
         # 掛け金半額返却
         cashback = bet // 2
@@ -792,22 +813,26 @@ class SlotMachineView(discord.ui.View):
                 ],
                 view=None
             )
-            
+
             # GIFの再生が終わるまで待つ
             await asyncio.sleep(3.0)
 
-            result = judge_slot_result(reels, self.bet)
+            result = judge_slot_result(
+                reels,
+                self.bet,
+                hana_lamp
+            )
 
             payout = result["payout"]
             final_flower = after_bet + payout
             profit = payout - self.bet
-            
+
             supabase.table("coins").upsert({
                 "user_id": interaction.user.id,
                 "coins": final_flower,
                 "updated_at": str(get_today())
             }).execute()
-
+            
             if result["type"] == "lose":
                 title = f"LOSE - マシン #{self.machine_id}"
                 color = discord.Color.red()

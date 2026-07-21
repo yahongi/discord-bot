@@ -203,6 +203,12 @@ SLOT_EVENT_NAMES = {
     "super_hot": "超激熱イベント"
 }
 
+ACTIVE_MACHINES = {}
+
+# ユーザーごとの最後のスロットメッセージ
+# user_id -> {"machine_id": int, "message": discord.Message}
+LAST_SLOT_MESSAGES = {}
+
 def _get_slot_font(size: int):
     try:
         return ImageFont.truetype("DejaVuSans-Bold.ttf", size)
@@ -1561,6 +1567,35 @@ class SlotMachineButton(discord.ui.Button):
         )
 
         try:
+            slot = LAST_SLOT_MESSAGES.get(interaction.user.id)
+
+            # 同じ台なら前回メッセージを再利用
+            if (
+                slot is not None
+                and slot["machine_id"] == self.machine_id
+            ):
+                try:
+                    await interaction.response.defer()
+
+                    await slot["message"].edit(
+                        embed=embed,
+                        attachments=[],
+                        view=SlotMachineView(
+                            owner_id=interaction.user.id,
+                            machine_id=self.machine_id,
+                            bet=self.bet
+                        )
+                    )
+
+                    return
+
+                except (discord.NotFound, discord.HTTPException):
+                    LAST_SLOT_MESSAGES.pop(
+                        interaction.user.id,
+                        None
+                    )
+
+            # 初回、または別の台
             await interaction.response.send_message(
                 embed=embed,
                 view=SlotMachineView(
@@ -1570,6 +1605,13 @@ class SlotMachineButton(discord.ui.Button):
                 )
             )
 
+            msg = await interaction.original_response()
+
+            LAST_SLOT_MESSAGES[interaction.user.id] = {
+                "machine_id": self.machine_id,
+                "message": msg
+            }
+            
         except Exception:
             # メッセージ送信に失敗したら台を開放
             if ACTIVE_MACHINES.get(self.machine_id) == interaction.user.id:

@@ -5,8 +5,8 @@ from threading import Thread
 import discord
 from discord.ext import commands
 from discord import app_commands
-from discord.ui import View, Button, Modal, TextInput
-from datetime import datetime, date, timedelta
+from discord.ext import commands, tasks
+from datetime import datetime, date, timedelta, time
 import pytz
 from supabase import create_client
 import random
@@ -517,6 +517,40 @@ def keep_alive():
     Thread(target=run_web).start()
 
 bot = commands.Bot(command_prefix="!", intents=intents)
+JST = pytz.timezone("Asia/Tokyo")
+
+
+@tasks.loop(
+    time=time(
+        hour=9,
+        minute=0,
+        tzinfo=JST
+    )
+)
+async def daily_slot_setting_update():
+    try:
+        await asyncio.to_thread(
+            generate_slot_settings,
+            "normal",
+            True
+        )
+
+        print(
+            "毎朝9時の通常営業設定を生成しました",
+            flush=True
+        )
+
+    except Exception as e:
+        print(
+            "DAILY SLOT SETTING ERROR:",
+            repr(e),
+            flush=True
+        )
+
+
+@daily_slot_setting_update.before_loop
+async def before_daily_slot_setting_update():
+    await bot.wait_until_ready()
 
 # 使用中のスロット台
 # {台番号: ユーザーID}
@@ -3542,6 +3576,27 @@ async def on_ready():
     print(f"同期したコマンド数: {len(synced)}", flush=True)
     for cmd in synced:
         print(cmd.name, flush=True)
+
+    if not daily_slot_setting_update.is_running():
+        daily_slot_setting_update.start()
+
+    try:
+        created = await asyncio.to_thread(
+            generate_slot_settings
+        )
+
+        if created:
+            print(
+                "不足していた本日の通常営業設定を生成しました",
+                flush=True
+            )
+
+    except Exception as e:
+        print(
+            "STARTUP SLOT SETTING ERROR:",
+            repr(e),
+            flush=True
+        )
     
 @bot.event
 async def on_voice_state_update(member, before, after):

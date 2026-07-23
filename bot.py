@@ -730,7 +730,7 @@ class SlotMachineView(discord.ui.View):
             three_rate = rates["three"]
 
             JACKPOT_RATE = 0.0001   # 777：約1/10,000
-            HANA_RATE = 0.0015  # 0.15% ；約1/667
+            HANA_RATE = 0.0015      # 花ランプ：約1/667
 
             hana_lamp = False
 
@@ -738,7 +738,7 @@ class SlotMachineView(discord.ui.View):
             roll = random.random()
 
             jackpot_border = JACKPOT_RATE
-            hana_border = jackpot_border + HANA_LAMP_RATE
+            hana_border = jackpot_border + HANA_RATE
             three_border = hana_border + three_rate
             two_border = three_border + two_rate
 
@@ -757,8 +757,7 @@ class SlotMachineView(discord.ui.View):
                 reels = [symbol, symbol, symbol]
 
             elif roll < three_border:
-                # 通常3揃い
-                # 777と区別するため7は除外
+                # 通常3揃い（777以外）
                 symbol = random.choice([
                     1, 2, 3, 4, 5, 6, 8, 9
                 ])
@@ -780,25 +779,13 @@ class SlotMachineView(discord.ui.View):
                 )
 
                 reels = random.choice([
-                    [
-                        same_symbol,
-                        same_symbol,
-                        different_symbol
-                    ],
-                    [
-                        same_symbol,
-                        different_symbol,
-                        same_symbol
-                    ],
-                    [
-                        different_symbol,
-                        same_symbol,
-                        same_symbol
-                    ]
+                    [same_symbol, same_symbol, different_symbol],
+                    [same_symbol, different_symbol, same_symbol],
+                    [different_symbol, same_symbol, same_symbol]
                 ])
 
             else:
-                # は、はずれーーｗｗｗ：必ず3つとも違う数字
+                # ハズレ（3つとも違う）
                 reels = random.sample(
                     range(1, 10),
                     3

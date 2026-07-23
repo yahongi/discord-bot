@@ -644,9 +644,20 @@ class SlotMachineView(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
+        # Discordへ最優先で応答
+        try:
+            await interaction.response.defer()
+        except discord.NotFound:
+            print(
+                "SLOT INTERACTION EXPIRED: 応答期限切れ",
+                flush=True
+            )
+            return
+
+        # すでに回転中の場合
         if self.running:
             try:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "すでに回転中です。",
                     ephemeral=True
                 )
@@ -654,9 +665,8 @@ class SlotMachineView(discord.ui.View):
                 pass
 
             return
+
         self.running = True
-        
-        await interaction.response.defer()
 
         try:
             balance_res = await asyncio.to_thread(

@@ -946,7 +946,8 @@ class SlotMachineView(discord.ui.View):
                 machine_id=self.machine_id,
                 owner_id=interaction.user.id
             ),
-            ephemeral=True
+            ephemeral=True,
+            delete_after=30
         )
         
     @discord.ui.button(
@@ -987,7 +988,7 @@ class SlotMachineView(discord.ui.View):
 
 class SlotInfoView(discord.ui.View):
     def __init__(self, machine_id: int, owner_id: int):
-        super().__init__(timeout=180)
+        super().__init__(timeout=30)
 
         self.machine_id = machine_id
         self.owner_id = owner_id
@@ -1012,9 +1013,17 @@ class SlotInfoView(discord.ui.View):
     ):
         await interaction.response.defer(ephemeral=True)
 
+        # 情報選択のボタン画面を押した瞬間に削除
+        try:
+            await interaction.delete_original_response()
+        except discord.NotFound:
+            pass
+        except discord.HTTPException:
+            pass
+
         try:
             setting_date = get_slot_setting_date()
-
+            
             # この台の本当の設定を取得
             setting_res = supabase.table(
                 "slot_machine_settings"
@@ -1031,7 +1040,8 @@ class SlotInfoView(discord.ui.View):
             if not setting_res.data:
                 await interaction.followup.send(
                     "この台の本日設定が見つかりませんでした。",
-                    ephemeral=True
+                    ephemeral=True,
+                    delete_after=30
                 )
                 return
 
@@ -1143,7 +1153,8 @@ class SlotInfoView(discord.ui.View):
 
                 await interaction.followup.send(
                     embed=embed,
-                    ephemeral=True
+                    ephemeral=True,
+                    delete_after=30
                 )
                 return
 
@@ -1170,7 +1181,8 @@ class SlotInfoView(discord.ui.View):
                     "フラワーが足りません。\n"
                     f"必要：**{price_to_pay:,}フラワー**\n"
                     f"現在：**{current_flower:,}フラワー**",
-                    ephemeral=True
+                    ephemeral=True,
+                    delete_after=30
                 )
                 return
 
@@ -1222,7 +1234,8 @@ class SlotInfoView(discord.ui.View):
 
             await interaction.followup.send(
                 embed=embed,
-                ephemeral=True
+                ephemeral=True,
+                delete_after=30
             )
 
         except Exception as e:
@@ -1231,12 +1244,12 @@ class SlotInfoView(discord.ui.View):
                 repr(e),
                 flush=True
             )
-            
+
             await interaction.followup.send(
                 "台情報の購入中にエラーが発生しました。",
-                ephemeral=True
-            ) 
-
+                ephemeral=True,
+                delete_after=30
+            )
     @discord.ui.button(
         label="簡易情報",
         style=discord.ButtonStyle.gray
@@ -1775,7 +1788,7 @@ async def slot(
         await interaction.response.send_message(
             "BET額は1以上にしてください。",
             ephemeral=True,
-            delete_after=60
+            delete_after=30
         )
         return
 
@@ -1789,7 +1802,7 @@ async def slot(
         embed=select_view.create_embed(),
         view=select_view,
         ephemeral=True,
-        delete_after=60
+        delete_after=30
     )
     
 class ProfileModal(Modal):

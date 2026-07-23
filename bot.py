@@ -3959,13 +3959,20 @@ async def on_voice_state_update(member, before, after):
                 f"{count}日"
             )
 
-            embed.set_thumbnail(
-                url=member.display_avatar.url
-            )
+        embed.set_thumbnail(
+            url=member.display_avatar.url
+        )
 
-            channel = after.channel
+        channel = after.channel
+
+        try:
             await channel.send(embed=embed)
-
+        except discord.Forbidden:
+            print(
+                f"VC参加通知を送信できません: {channel.name}",
+                flush=True
+            )
+            
     # VCから完全に抜けた時
     if before.channel is not None and after.channel is None:
         await finish_daily_vc_tracking(member)

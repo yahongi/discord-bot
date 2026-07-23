@@ -1013,14 +1013,6 @@ class SlotInfoView(discord.ui.View):
     ):
         await interaction.response.defer(ephemeral=True)
 
-        # 情報選択のボタン画面を押した瞬間に削除
-        try:
-            await interaction.delete_original_response()
-        except discord.NotFound:
-            pass
-        except discord.HTTPException:
-            pass
-
         try:
             setting_date = get_slot_setting_date()
             
@@ -1038,17 +1030,25 @@ class SlotInfoView(discord.ui.View):
             ).limit(1).execute()
 
             if not setting_res.data:
-                await interaction.followup.send(
-                    "この台の本日設定が見つかりませんでした。",
-                    ephemeral=True,
-                    delete_after=30
+                await interaction.edit_original_response(
+                    content="この台の本日設定が見つかりませんでした。",
+                    embed=None,
+                    view=None
                 )
+
+                await asyncio.sleep(30)
+
+                try:
+                    await interaction.delete_original_response()
+                except (discord.NotFound, discord.HTTPException):
+                    pass
+
                 return
 
             machine_setting = int(
                 setting_res.data[0]["setting"]
             )
-
+            
             # 本日のイベントを取得
             event_res = supabase.table(
                 "slot_event"
@@ -1232,11 +1232,17 @@ class SlotInfoView(discord.ui.View):
                 text="本日の台情報として保存されました"
             )
 
-            await interaction.followup.send(
+            await interaction.edit_original_response(
                 embed=embed,
-                ephemeral=True,
-                delete_after=30
+                view=None
             )
+
+            await asyncio.sleep(30)
+
+            try:
+                await interaction.delete_original_response()
+            except (discord.NotFound, discord.HTTPException):
+                pass
 
         except Exception as e:
             print(
@@ -1250,6 +1256,7 @@ class SlotInfoView(discord.ui.View):
                 ephemeral=True,
                 delete_after=30
             )
+            
     @discord.ui.button(
         label="簡易情報",
         style=discord.ButtonStyle.gray

@@ -2196,6 +2196,126 @@ class ThemeView(View):
     @discord.ui.button(label="⚪ 白", style=discord.ButtonStyle.gray, row=1)
     async def white(self, interaction: discord.Interaction, button: Button):
         await self.save_theme(interaction, "white")
+
+async def give_daily_chat_reward(message: discord.Message):
+    user_id = message.author.id
+    reward_date = str(get_today())
+
+    try:
+        # 今日のデイリー情報を確認
+        reward_res = await asyncio.to_thread(
+            lambda: supabase.table("daily_rewards")
+            .select("*")
+            .eq("user_id", user_id)
+            .eq("reward_date", reward_date)
+            .limit(1)
+            .execute()
+        )
+
+        reward_data = (
+            reward_res.data[0]
+            if reward_res.data
+            else None
+        )
+
+        # すでに今日のチャット報酬を受け取っていたら終了
+        if (
+            reward_data
+            and reward_data.get("chat_reward") is True
+        ):
+            return
+
+        # 現在の所持フラワーを取得
+        coin_res = await asyncio.to_thread(
+            lambda: supabase.table("coins")
+            .select("coins")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+
+        current_flower = (
+            int(coin_res.data[0]["coins"])
+            if coin_res.data
+            else 0
+        )
+
+        new_flower = current_flower + 80
+
+        # フラワーを80付与
+        await asyncio.to_thread(
+            lambda: supabase.table("coins").upsert({
+                "user_id": user_id,
+                "coins": new_flower,
+                "updated_at": reward_date
+            }).execute()
+        )
+
+        # 今日のチャット報酬を受取済みにする
+        daily_row = {
+            "user_id": user_id,
+            "reward_date": reward_date,
+            "chat_reward": True,
+            "vc15_reward": (
+                bool(reward_data.get("vc15_reward"))
+                if reward_data
+                else False
+            ),
+            "vc60_reward": (
+                bool(reward_data.get("vc60_reward"))
+                if reward_data
+                else False
+            ),
+            "vc_seconds": (
+                int(reward_data.get("vc_seconds") or 0)
+                if reward_data
+                else 0
+            ),
+            "vc_join_time": (
+                reward_data.get("vc_join_time")
+                if reward_data
+                else None
+            )
+        }
+
+        await asyncio.to_thread(
+            lambda: supabase.table("daily_rewards")
+            .upsert(daily_row)
+            .execute()
+        )
+
+        # 3秒だけGET表示
+        embed = discord.Embed(
+            title="🌸 GET！",
+            description=(
+                f"{message.author.mention}\n"
+                f"チャット報酬\n"
+                f"**+80フラワー**"
+            ),
+            color=0xFF69B4
+        )
+
+        embed.set_footer(
+            text=f"所持フラワー：{new_flower:,}"
+        )
+
+        await message.channel.send(
+            embed=embed,
+            delete_after=3
+        )
+
+        print(
+            f"CHAT DAILY REWARD: "
+            f"{message.author.display_name} +80",
+            flush=True
+        )
+
+    except Exception as e:
+        print(
+            "CHAT DAILY REWARD ERROR:",
+            repr(e),
+            flush=True
+        )
         
 def update_vc(user_id):
     today = get_today()
@@ -3654,6 +3774,8 @@ async def on_message(message):
         return
 
     update_vc(message.author.id)
+
+    await give_daily_chat_reward(message)
 
     if message.channel.id in [MALE_INTRO_CHANNEL_ID, FEMALE_INTRO_CHANNEL_ID]:
 

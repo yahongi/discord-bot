@@ -2316,10 +2316,186 @@ async def give_daily_chat_reward(message: discord.Message):
             repr(e),
             flush=True
         )
-        
+
+async def start_daily_vc_tracking(member):
+    try:
+        reward_date = str(get_today())
+        now = datetime.now(JST).isoformat()
+
+        res = (
+            supabase.table("daily_rewards")
+            .select("*")
+            .eq("user_id", member.id)
+            .eq("reward_date", reward_date)
+            .execute()
+        )
+
+        if res.data:
+            # 入室時刻が記録済みなら上書きしない
+            if res.data[0].get("vc_join_time"):
+                return
+
+            (
+                supabase.table("daily_rewards")
+                .update({
+                    "vc_join_time": now
+                })
+                .eq("user_id", member.id)
+                .eq("reward_date", reward_date)
+                .execute()
+            )
+
+        else:
+            supabase.table("daily_rewards").insert({
+                "user_id": member.id,
+                "reward_date": reward_date,
+                "chat_reward": False,
+                "vc15_reward": False,
+                "vc60_reward": False,
+                "vc_seconds": 0,
+                "vc_join_time": now
+            }).execute()
+
+        print(
+            f"VC TRACKING START: {member.display_name}",
+            flush=True
+        )
+
+    except Exception as e:
+        print(
+            "VC TRACKING START ERROR:",
+            repr(e),
+            flush=True
+        )
+
+
+async def finish_daily_vc_tracking(member):
+    try:
+        reward_date = str(get_today())
+
+        res = (
+            supabase.table("daily_rewards")
+            .select("*")
+            .eq("user_id", member.id)
+            .eq("reward_date", reward_date)
+            .execute()
+        )
+
+        if not res.data:
+            return
+
+        data = res.data[0]
+        join_time_text = data.get("vc_join_time")
+
+        if not join_time_text:
+            return
+
+        join_time = datetime.fromisoformat(join_time_text)
+        now = datetime.now(JST)
+
+        session_seconds = max(
+            0,
+            int((now - join_time).total_seconds())
+        )
+
+        total_seconds = (
+            data.get("vc_seconds", 0) or 0
+        ) + session_seconds
+
+        vc15_reward = data.get("vc15_reward", False)
+        vc60_reward = data.get("vc60_reward", False)
+
+        reward = 0
+        reward_text = []
+
+        if total_seconds >= 15 * 60 and not vc15_reward:
+            reward += 200
+            vc15_reward = True
+            reward_text.append("VC15分報酬\n+200フラワー")
+
+        if total_seconds >= 60 * 60 and not vc60_reward:
+            reward += 500
+            vc60_reward = True
+            reward_text.append("VC60分報酬\n+500フラワー")
+
+        (
+            supabase.table("daily_rewards")
+            .update({
+                "vc_seconds": total_seconds,
+                "vc_join_time": None,
+                "vc15_reward": vc15_reward,
+                "vc60_reward": vc60_reward
+            })
+            .eq("user_id", member.id)
+            .eq("reward_date", reward_date)
+            .execute()
+        )
+
+        if reward <= 0:
+            print(
+                f"VC TRACKING END: {member.display_name} "
+                f"{total_seconds}秒",
+                flush=True
+            )
+            return
+
+        coin_res = (
+            supabase.table("coins")
+            .select("*")
+            .eq("user_id", member.id)
+            .execute()
+        )
+
+        current_flower = (
+            coin_res.data[0].get("coins", 0)
+            if coin_res.data
+            else 0
+        )
+
+        new_flower = current_flower + reward
+
+        supabase.table("coins").upsert({
+            "user_id": member.id,
+            "coins": new_flower,
+            "updated_at": str(get_today())
+        }).execute()
+
+        embed = discord.Embed(
+            title="🌸 GET!",
+            description="\n\n".join(reward_text),
+            color=0xff69b4
+        )
+
+        try:
+            await member.send(embed=embed)
+        except discord.Forbidden:
+            print(
+                f"DM送信不可: {member.display_name}",
+                flush=True
+            )
+
+        print(
+            f"VC DAILY REWARD: {member.display_name} +{reward}",
+            flush=True
+        )
+
+    except Exception as e:
+        print(
+            "VC TRACKING END ERROR:",
+            repr(e),
+            flush=True
+        )
+
+
 def update_vc(user_id):
     today = get_today()
-    data = supabase.table("vc_count").select("*").eq("user_id", user_id).execute()
+
+    data = (
+        supabase.table("vc_count")
+        .select("*")
+        .eq("user_id", user_id)
+        .execute()
+    )
 
     if not data.data:
         supabase.table("vc_count").insert({
@@ -2327,6 +2503,7 @@ def update_vc(user_id):
             "count": 1,
             "last_date": str(today)
         }).execute()
+
         return 1
 
     user = data.data[0]
@@ -2336,12 +2513,20 @@ def update_vc(user_id):
     if last_date == today:
         return count
 
-    count = count + 1 if last_date == today - timedelta(days=1) else 1
+    if last_date == today - timedelta(days=1):
+        count += 1
+    else:
+        count = 1
 
-    supabase.table("vc_count").update({
-        "count": count,
-        "last_date": str(today)
-    }).eq("user_id", user_id).execute()
+    (
+        supabase.table("vc_count")
+        .update({
+            "count": count,
+            "last_date": str(today)
+        })
+        .eq("user_id", user_id)
+        .execute()
+    )
 
     return count
 
@@ -3725,48 +3910,65 @@ async def on_voice_state_update(member, before, after):
 
     if after.channel is not None and before.channel != after.channel:
         count = update_vc(member.id)
-        print(f"{member.display_name} の連続出席日数: {count}", flush=True)
 
-        res = supabase.table("profiles").select("*").eq("user_id", member.id).execute()
+        await start_daily_vc_tracking(member)
 
-        if not res.data:
-            return
-
-        profile = res.data[0] 
-
-        theme_name = profile.get("theme_color") or "purple"
-        theme_color = THEME_COLORS.get(theme_name, 0x8b5cf6)
-
-        embed = discord.Embed(
-            title=f"🎧 {member.display_name} さんがVCに参加しました",
-            color=theme_color
+        print(
+            f"{member.display_name} の連続出席日数: {count}",
+            flush=True
         )
 
-        embed.description = (
-            f"**👤 名前**\n"
-            f"{profile.get('name') or '未設定'}\n\n"
-
-            f"**💬 性格と接し方**\n"
-            f"{profile.get('personality') or '未設定'}\n\n"
-
-            f"**⚠️ 苦手・絡む時の注意**\n"
-            f"{profile.get('caution') or '未設定'}\n\n"
-
-            f"**🎮 やってるゲーム**\n"
-            f"{profile.get('games') or '未設定'}\n\n"
-
-            f"**📝 一言**\n"
-            f"{profile.get('message') or '未設定'}\n\n"
-
-            f"**🔥 連続出席日数**\n"
-            f"{count}日"
+        res = (
+            supabase.table("profiles")
+            .select("*")
+            .eq("user_id", member.id)
+            .execute()
         )
 
-        embed.set_thumbnail(url=member.display_avatar.url)
+        if res.data:
+            profile = res.data[0]
 
-        channel = after.channel
+            theme_name = profile.get("theme_color") or "purple"
+            theme_color = THEME_COLORS.get(
+                theme_name,
+                0x8b5cf6
+            )
 
-        await channel.send(embed=embed)
+            embed = discord.Embed(
+                title=f"🎧 {member.display_name} さんがVCに参加しました",
+                color=theme_color
+            )
+
+            embed.description = (
+                f"**👤 名前**\n"
+                f"{profile.get('name') or '未設定'}\n\n"
+
+                f"**💬 性格と接し方**\n"
+                f"{profile.get('personality') or '未設定'}\n\n"
+
+                f"**⚠️ 苦手・絡む時の注意**\n"
+                f"{profile.get('caution') or '未設定'}\n\n"
+
+                f"**🎮 やってるゲーム**\n"
+                f"{profile.get('games') or '未設定'}\n\n"
+
+                f"**📝 一言**\n"
+                f"{profile.get('message') or '未設定'}\n\n"
+
+                f"**🔥 連続出席日数**\n"
+                f"{count}日"
+            )
+
+            embed.set_thumbnail(
+                url=member.display_avatar.url
+            )
+
+            channel = after.channel
+            await channel.send(embed=embed)
+
+    # VCから完全に抜けた時
+    if before.channel is not None and after.channel is None:
+        await finish_daily_vc_tracking(member)
 
 @bot.event
 async def on_message(message):

@@ -188,12 +188,12 @@ SLOT_EVENT_DISTRIBUTIONS = {
 }
 
 SETTING_RATES = {
-    1: {"two": 0.22, "three": 0.020},
-    2: {"two": 0.26, "three": 0.030},
-    3: {"two": 0.31, "three": 0.045},
-    4: {"two": 0.37, "three": 0.065},
-    5: {"two": 0.44, "three": 0.090},
-    6: {"two": 0.52, "three": 0.120},
+    1: {"two": 0.04, "three": 0.002},
+    2: {"two": 0.06, "three": 0.004},
+    3: {"two": 0.10, "three": 0.009},
+    4: {"two": 0.16, "three": 0.020},
+    5: {"two": 0.24, "three": 0.035},
+    6: {"two": 0.35, "three": 0.055},
 }
 
 SLOT_EVENT_NAMES = {

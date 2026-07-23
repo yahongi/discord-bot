@@ -188,12 +188,12 @@ SLOT_EVENT_DISTRIBUTIONS = {
 }
 
 SETTING_RATES = {
-    1: {"two": 0.04, "three": 0.002},
-    2: {"two": 0.06, "three": 0.004},
-    3: {"two": 0.10, "three": 0.009},
-    4: {"two": 0.16, "three": 0.020},
-    5: {"two": 0.24, "three": 0.035},
-    6: {"two": 0.35, "three": 0.055},
+    1: {"two": 0.02, "three": 0.002},
+    2: {"two": 0.04, "three": 0.004},
+    3: {"two": 0.07, "three": 0.009},
+    4: {"two": 0.11, "three": 0.020},
+    5: {"two": 0.16, "three": 0.035},
+    6: {"two": 0.24, "three": 0.055},
 }
 
 SLOT_EVENT_NAMES = {
@@ -730,7 +730,7 @@ class SlotMachineView(discord.ui.View):
             three_rate = rates["three"]
 
             JACKPOT_RATE = 0.0001   # 777：約1/10,000
-            HANA_LAMP_RATE = 0.003  # ハナ：約1/333
+            HANA_RATE = 0.0015  # 0.15% ；約1/667
 
             hana_lamp = False
 

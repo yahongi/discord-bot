@@ -1774,7 +1774,8 @@ async def slot(
     if bet <= 0:
         await interaction.response.send_message(
             "BET額は1以上にしてください。",
-            ephemeral=True
+            ephemeral=True,
+            delete_after=60
         )
         return
 
@@ -1787,9 +1788,10 @@ async def slot(
     await interaction.response.send_message(
         embed=select_view.create_embed(),
         view=select_view,
-        ephemeral=True
+        ephemeral=True,
+        delete_after=60
     )
-
+    
 class ProfileModal(Modal):
 
     def __init__(self, profile=None):

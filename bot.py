@@ -2207,25 +2207,32 @@ async def give_daily_chat_reward(message: discord.Message):
             .execute()
         )
 
-        # 3秒だけGET表示
         embed = discord.Embed(
-            title="🌸 GET！",
+            title="🌸 出席ありがとう！",
             description=(
-                f"{message.author.mention}\n"
-                f"チャット報酬\n"
-                f"**+80フラワー**"
+                "本日の出席を確認しました。\n\n"
+                "🎁 **+80フラワー獲得！**"
             ),
             color=0xFF69B4
         )
 
         embed.set_footer(
-            text=f"所持フラワー：{new_flower:,}"
+            text=f"現在の所持フラワー：{new_flower:,}🌸"
         )
 
-        await message.channel.send(
-            embed=embed,
-            delete_after=3
-        )
+        try:
+            dm = await message.author.create_dm()
+
+            await dm.send(
+                embed=embed
+            )
+
+        except discord.Forbidden:
+            print(
+                f"CHAT REWARD DM送信不可: "
+                f"{message.author.display_name}",
+                flush=True
+            )
 
         print(
             f"CHAT DAILY REWARD: "
@@ -2233,12 +2240,6 @@ async def give_daily_chat_reward(message: discord.Message):
             flush=True
         )
 
-    except Exception as e:
-        print(
-            "CHAT DAILY REWARD ERROR:",
-            repr(e),
-            flush=True
-        )
 
 async def start_daily_vc_tracking(member):
     try:
@@ -2290,7 +2291,6 @@ async def start_daily_vc_tracking(member):
             repr(e),
             flush=True
         )
-
 
 async def finish_daily_vc_tracking(member):
     try:
@@ -2384,25 +2384,42 @@ async def finish_daily_vc_tracking(member):
         }).execute()
 
         embed = discord.Embed(
-            title="🌸 GET!",
+            title="🌸 VC参加ありがとう！",
             description="\n\n".join(reward_text),
-            color=0xff69b4
+            color=0xFF69B4
+        )
+
+        embed.set_footer(
+            text=f"現在の所持フラワー：{new_flower:,}🌸"
         )
 
         try:
-            await member.send(embed=embed)
+            dm = await member.create_dm()
+
+            msg = await dm.send(
+                embed=embed
+            )
+
+            await asyncio.sleep(10)
+
+            try:
+                await msg.delete()
+            except (discord.NotFound, discord.HTTPException):
+                pass
+
         except discord.Forbidden:
             print(
-                f"DM送信不可: {member.display_name}",
+                f"VC REWARD DM送信不可: "
+                f"{member.display_name}",
                 flush=True
             )
 
         print(
-            f"VC DAILY REWARD: {member.display_name} +{reward}",
+            f"VC DAILY REWARD: "
+            f"{member.display_name} +{reward}",
             flush=True
         )
-
-    except Exception as e:
+        
         print(
             "VC TRACKING END ERROR:",
             repr(e),

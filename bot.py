@@ -2426,7 +2426,8 @@ async def finish_daily_vc_tracking(member):
             f"{member.display_name} +{reward}",
             flush=True
         )
-        
+
+    except Exception as e:
         print(
             "VC TRACKING END ERROR:",
             repr(e),

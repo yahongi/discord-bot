@@ -2239,6 +2239,13 @@ async def give_daily_chat_reward(message: discord.Message):
             f"{message.author.display_name} +80",
             flush=True
         )
+    
+    except Exception as e:
+        print(
+            "CHAT DAILY REWARD ERROR:",
+            repr(e),
+            flush=True
+        )
 
 
 async def start_daily_vc_tracking(member):

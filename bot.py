@@ -138,12 +138,7 @@ THREE_MATCH_MULTIPLIERS = {
     9: 9.0
 }
 
-SLOT_INFO_PRICES = {
-    0: 0,
-    1: 200,
-    2: 500,
-    3: 1500
-}
+SLOT_INFO_PRICE = 1500
 
 SLOT_INFO_NAMES = {
     0: "未購入",
@@ -1075,28 +1070,33 @@ class SlotInfoView(discord.ui.View):
 
         return True
 
+    @discord.ui.button(
+        label="1,500フラワーで購入",
+        style=discord.ButtonStyle.green
+    )
     async def purchase_info(
         self,
         interaction: discord.Interaction,
-        target_level: int
+        button: discord.ui.Button
     ):
         await interaction.response.defer(ephemeral=True)
 
         try:
             setting_date = get_slot_setting_date()
-            
-            # この台の本当の設定を取得
-            setting_res = supabase.table(
-                "slot_machine_settings"
-            ).select(
-                "setting"
-            ).eq(
-                "machine_id",
-                self.machine_id
-            ).eq(
-                "setting_date",
-                setting_date
-            ).limit(1).execute()
+
+            setting_res = await asyncio.to_thread(
+                lambda: supabase.table(
+                    "slot_machine_settings"
+                ).select(
+                    "setting"
+                ).eq(
+                    "machine_id",
+                    self.machine_id
+                ).eq(
+                    "setting_date",
+                    setting_date
+                ).limit(1).execute()
+            )
 
             if not setting_res.data:
                 await interaction.edit_original_response(
@@ -1104,140 +1104,60 @@ class SlotInfoView(discord.ui.View):
                     embed=None,
                     view=None
                 )
-
-                await asyncio.sleep(30)
-
-                try:
-                    await interaction.delete_original_response()
-                except (discord.NotFound, discord.HTTPException):
-                    pass
-
                 return
 
             machine_setting = int(
                 setting_res.data[0]["setting"]
             )
-            
-            # 本日のイベントを取得
-            event_res = supabase.table(
-                "slot_event"
-            ).select(
-                "event_type"
-            ).eq(
-                "event_date",
-                setting_date
-            ).limit(1).execute()
 
-            event_type = (
-                event_res.data[0]["event_type"]
-                if event_res.data
-                else "normal"
+            purchase_res = await asyncio.to_thread(
+                lambda: supabase.table(
+                    "slot_info_purchases"
+                ).select(
+                    "info_level"
+                ).eq(
+                    "user_id",
+                    interaction.user.id
+                ).eq(
+                    "machine_id",
+                    self.machine_id
+                ).eq(
+                    "setting_date",
+                    setting_date
+                ).limit(1).execute()
             )
 
-            if event_type not in SLOT_EVENT_NAMES:
-                event_type = "normal"
-
-            # 購入状況を取得
-            purchase_res = supabase.table(
-                "slot_info_purchases"
-            ).select("*").eq(
-                "user_id",
-                interaction.user.id
-            ).eq(
-                "machine_id",
-                self.machine_id
-            ).eq(
-                "setting_date",
-                setting_date
-            ).execute()
-
-            current_level = (
-                int(purchase_res.data[0]["info_level"])
-                if purchase_res.data
-                else 0
-            )
-
-            # 情報内容を作る
-            if target_level == 1:
-                if machine_setting >= 5:
-                    info_text = (
-                        "🔥 **高設定の期待が持てる台です。**\n"
-                        "続けて遊ぶ価値がありそうです。"
-                    )
-                    info_color = discord.Color.orange()
-
-                elif machine_setting >= 3:
-                    info_text = (
-                        "📊 **中間設定の可能性があります。**\n"
-                        "大きく勝てるかは展開次第です。"
-                    )
-                    info_color = discord.Color.blue()
-
-                else:
-                    info_text = (
-                        "❄️ **低設定寄りの台です。**\n"
-                        "深追いには注意してください。"
-                    )
-                    info_color = discord.Color.light_gray()
-
-            elif target_level == 2:
-                setting_ranges = {
-                    1: "設定1〜2の可能性が高い",
-                    2: "設定1〜3の可能性が高い",
-                    3: "設定2〜4の可能性が高い",
-                    4: "設定3〜5の可能性が高い",
-                    5: "設定4〜6の可能性が高い",
-                    6: "設定5〜6の可能性が高い"
-                }
-
-                info_text = (
-                    f"🔍 **{setting_ranges[machine_setting]}です。**\n\n"
-                    f"本日の営業タイプ："
-                    f"**{SLOT_EVENT_NAMES[event_type]}**"
-                )
-                info_color = discord.Color.purple()
-
-            else:
-                info_text = (
-                    "🎯 **設定が確定しました。**\n\n"
-                    f"この台の設定は……\n"
-                    f"# 設定{machine_setting}"
-                )
-                info_color = discord.Color.gold()
-
-            # すでに購入済みなら料金を取らず再表示
-            if current_level >= target_level:
+            if purchase_res.data:
                 embed = discord.Embed(
-                    title=(
-                        f"📄 マシン #{self.machine_id:03} "
-                        f"{SLOT_INFO_NAMES[target_level]}"
+                    title=f"📄 マシン #{self.machine_id:03} 台情報",
+                    description=(
+                        "🎯 **設定が確定しました。**\n\n"
+                        f"この台の設定は……\n"
+                        f"# 設定{machine_setting}"
                     ),
-                    description=info_text,
-                    color=info_color
+                    color=discord.Color.gold()
                 )
 
                 embed.set_footer(
                     text="この情報は購入済みです"
                 )
 
-                await interaction.followup.send(
+                await interaction.edit_original_response(
                     embed=embed,
-                    ephemeral=True,
-                    delete_after=30
+                    view=None
                 )
                 return
 
-            current_price = SLOT_INFO_PRICES[current_level]
-            target_price = SLOT_INFO_PRICES[target_level]
-            price_to_pay = target_price - current_price
-
-            # 所持フラワーを取得
-            balance_res = supabase.table(
-                "coins"
-            ).select("*").eq(
-                "user_id",
-                interaction.user.id
-            ).execute()
+            balance_res = await asyncio.to_thread(
+                lambda: supabase.table(
+                    "coins"
+                ).select(
+                    "coins"
+                ).eq(
+                    "user_id",
+                    interaction.user.id
+                ).limit(1).execute()
+            )
 
             current_flower = (
                 int(balance_res.data[0]["coins"])
@@ -1245,53 +1165,54 @@ class SlotInfoView(discord.ui.View):
                 else 0
             )
 
-            if current_flower < price_to_pay:
-                await interaction.followup.send(
-                    "フラワーが足りません。\n"
-                    f"必要：**{price_to_pay:,}フラワー**\n"
-                    f"現在：**{current_flower:,}フラワー**",
-                    ephemeral=True,
-                    delete_after=30
+            if current_flower < SLOT_INFO_PRICE:
+                await interaction.edit_original_response(
+                    content=(
+                        "フラワーが足りません。\n"
+                        f"必要：**{SLOT_INFO_PRICE:,}フラワー**\n"
+                        f"現在：**{current_flower:,}フラワー**"
+                    ),
+                    embed=None,
+                    view=None
                 )
                 return
 
-            new_flower = current_flower - price_to_pay
+            new_flower = current_flower - SLOT_INFO_PRICE
 
-            # フラワーを支払う
-            supabase.table("coins").upsert({
-                "user_id": interaction.user.id,
-                "coins": new_flower,
-                "updated_at": str(get_today())
-            }).execute()
+            await asyncio.to_thread(
+                lambda: supabase.table("coins").upsert({
+                    "user_id": interaction.user.id,
+                    "coins": new_flower,
+                    "updated_at": str(get_today())
+                }).execute()
+            )
 
-            # 購入情報を保存
-            supabase.table(
-                "slot_info_purchases"
-            ).upsert({
-                "user_id": interaction.user.id,
-                "machine_id": self.machine_id,
-                "info_level": target_level,
-                "setting_date": setting_date,
-                "updated_at": str(
-                    datetime.now(
-                        pytz.timezone("Asia/Tokyo")
-                    )
-                )
-            }).execute()
+            await asyncio.to_thread(
+                lambda: supabase.table(
+                    "slot_info_purchases"
+                ).upsert({
+                    "user_id": interaction.user.id,
+                    "machine_id": self.machine_id,
+                    "info_level": 1,
+                    "setting_date": setting_date,
+                    "updated_at": datetime.now(JST).isoformat()
+                }).execute()
+            )
 
             embed = discord.Embed(
-                title=(
-                    f"📄 マシン #{self.machine_id:03} "
-                    f"{SLOT_INFO_NAMES[target_level]}"
+                title=f"📄 マシン #{self.machine_id:03} 台情報",
+                description=(
+                    "🎯 **設定が確定しました。**\n\n"
+                    f"この台の設定は……\n"
+                    f"# 設定{machine_setting}"
                 ),
-                description=info_text,
-                color=info_color
+                color=discord.Color.gold()
             )
 
             embed.add_field(
                 name="購入情報",
                 value=(
-                    f"支払い：**{price_to_pay:,}フラワー**\n"
+                    f"支払い：**{SLOT_INFO_PRICE:,}フラワー**\n"
                     f"残高：**{new_flower:,}フラワー**"
                 ),
                 inline=False
@@ -1306,13 +1227,6 @@ class SlotInfoView(discord.ui.View):
                 view=None
             )
 
-            await asyncio.sleep(30)
-
-            try:
-                await interaction.delete_original_response()
-            except (discord.NotFound, discord.HTTPException):
-                pass
-
         except Exception as e:
             print(
                 "SLOT INFO PURCHASE ERROR:",
@@ -1320,44 +1234,11 @@ class SlotInfoView(discord.ui.View):
                 flush=True
             )
 
-            await interaction.followup.send(
-                "台情報の購入中にエラーが発生しました。",
-                ephemeral=True,
-                delete_after=30
+            await interaction.edit_original_response(
+                content="台情報の購入中にエラーが発生しました。",
+                embed=None,
+                view=None
             )
-            
-    @discord.ui.button(
-        label="簡易情報",
-        style=discord.ButtonStyle.gray
-    )
-    async def simple_info(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-        await self.purchase_info(interaction, 1)
-
-    @discord.ui.button(
-        label="詳細情報",
-        style=discord.ButtonStyle.blurple
-    )
-    async def detail_info(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-        await self.purchase_info(interaction, 2)
-
-    @discord.ui.button(
-        label="設定確定",
-        style=discord.ButtonStyle.green
-    )
-    async def setting_info(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
-        await self.purchase_info(interaction, 3)
 
 class SlotSettingAdminView(discord.ui.View):
     def __init__(self):

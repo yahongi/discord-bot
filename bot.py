@@ -982,13 +982,8 @@ class SlotMachineView(discord.ui.View):
     ):
         await interaction.response.send_modal(
             BetModal(self)
-        )    
+        )
 
-    @discord.ui.button(
-        label="台情報を見る",
-        style=discord.ButtonStyle.blurple,
-        row=0
-    )
     @discord.ui.button(
         label="台情報を見る",
         style=discord.ButtonStyle.blurple,
@@ -1017,7 +1012,12 @@ class SlotMachineView(discord.ui.View):
             ephemeral=True,
             delete_after=30
         )
-        
+
+    @discord.ui.button(
+        label="台を離れる",
+        style=discord.ButtonStyle.red,
+        row=0
+    )
     async def leave_machine(
         self,
         interaction: discord.Interaction,
@@ -1026,6 +1026,13 @@ class SlotMachineView(discord.ui.View):
         if self.running:
             await interaction.response.send_message(
                 "回転中は台から離れられません。",
+                ephemeral=True
+            )
+            return
+
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message(
+                "この台を離れられるのは着席中のユーザーだけです。",
                 ephemeral=True
             )
             return
@@ -1044,6 +1051,7 @@ class SlotMachineView(discord.ui.View):
 
         await interaction.response.edit_message(
             embed=leave_embed,
+            attachments=[],
             view=None
         )
 

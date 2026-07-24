@@ -989,6 +989,11 @@ class SlotMachineView(discord.ui.View):
         style=discord.ButtonStyle.blurple,
         row=0
     )
+    @discord.ui.button(
+        label="台情報を見る",
+        style=discord.ButtonStyle.blurple,
+        row=0
+    )
     async def machine_info(
         self,
         interaction: discord.Interaction,
@@ -997,13 +1002,12 @@ class SlotMachineView(discord.ui.View):
         embed = discord.Embed(
             title=f"📄 マシン #{self.machine_id:03} 情報",
             description=(
-                "購入する情報を選んでください。\n\n"
-                f"🟦 簡易情報：{SLOT_INFO_PRICES[1]}🌸\n"
-                f"🟪 詳細情報：{SLOT_INFO_PRICES[2]}🌸\n"
-                f"🟨 設定確定：{SLOT_INFO_PRICES[3]}🌸"
+                "この台の設定情報を購入できます。\n\n"
+                f"価格：**{SLOT_INFO_PRICE:,}フラワー**"
             ),
             color=0x5865F2
         )
+
         await interaction.response.send_message(
             embed=embed,
             view=SlotInfoView(
@@ -1014,11 +1018,6 @@ class SlotMachineView(discord.ui.View):
             delete_after=30
         )
         
-    @discord.ui.button(
-        label="台を離れる",
-        style=discord.ButtonStyle.red,
-        row=0
-    )
     async def leave_machine(
         self,
         interaction: discord.Interaction,

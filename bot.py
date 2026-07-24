@@ -116,26 +116,26 @@ MALE_INTRO_CHANNEL_ID = 1463538621293396152
 FEMALE_INTRO_CHANNEL_ID = 1463538649915330601
 FLOWER_LOG_CHANNEL_ID = 1526955808317898762
 TWO_MATCH_MULTIPLIERS = {
-    1: 1.2,
-    2: 1.3,
-    3: 1.4,
-    4: 1.5,
-    5: 1.6,
-    6: 1.7,
-    7: 1.8,
-    8: 1.9,
-    9: 2.0
+    1: 0.6,
+    2: 0.7,
+    3: 0.8,
+    4: 0.9,
+    5: 1.0,
+    6: 1.1,
+    7: 1.2,
+    8: 1.3,
+    9: 1.5
 }
 
 THREE_MATCH_MULTIPLIERS = {
-    1: 3.0,
-    2: 3.5,
-    3: 4.0,
-    4: 5.0,
-    5: 6.0,
-    6: 7.0,
-    8: 9.0,
-    9: 10.0
+    1: 2.0,
+    2: 2.3,
+    3: 2.7,
+    4: 3.2,
+    5: 3.8,
+    6: 4.6,
+    8: 6.5,
+    9: 9.0
 }
 
 SLOT_INFO_PRICES = {
@@ -188,13 +188,53 @@ SLOT_EVENT_DISTRIBUTIONS = {
 }
 
 SETTING_RATES = {
-    1: {"two": 0.02, "three": 0.002},
-    2: {"two": 0.04, "three": 0.004},
-    3: {"two": 0.07, "three": 0.009},
-    4: {"two": 0.11, "three": 0.020},
-    5: {"two": 0.16, "three": 0.035},
-    6: {"two": 0.24, "three": 0.055},
+    1: {"two": 0.1500, "three": 0.0200},
+    2: {"two": 0.1900, "three": 0.0300},
+    3: {"two": 0.2400, "three": 0.0450},
+    4: {"two": 0.2900, "three": 0.0650},
+    5: {"two": 0.3400, "three": 0.0850},
+    6: {"two": 0.4240, "three": 0.0900},
 }
+
+SYMBOL_WEIGHTS = {
+    1: 20,
+    2: 18,
+    3: 16,
+    4: 14,
+    5: 11,
+    6: 8,
+    7: 6,
+    8: 4,
+    9: 3
+}
+
+THREE_MATCH_SYMBOLS = [
+    1, 2, 3, 4, 5, 6, 8, 9
+]
+
+
+def choose_two_match_symbol():
+    symbols = list(SYMBOL_WEIGHTS.keys())
+    weights = list(SYMBOL_WEIGHTS.values())
+
+    return random.choices(
+        symbols,
+        weights=weights,
+        k=1
+    )[0]
+
+
+def choose_three_match_symbol():
+    weights = [
+        SYMBOL_WEIGHTS[symbol]
+        for symbol in THREE_MATCH_SYMBOLS
+    ]
+
+    return random.choices(
+        THREE_MATCH_SYMBOLS,
+        weights=weights,
+        k=1
+    )[0]
 
 SLOT_EVENT_NAMES = {
     "normal": "通常営業",
@@ -730,7 +770,7 @@ class SlotMachineView(discord.ui.View):
             three_rate = rates["three"]
 
             JACKPOT_RATE = 0.0001   # 777：約1/10,000
-            HANA_RATE = 0.0015      # 花ランプ：約1/667
+            HANA_RATE = 1 / 299
 
             hana_lamp = False
 
@@ -749,24 +789,22 @@ class SlotMachineView(discord.ui.View):
             elif roll < hana_border:
                 # ハナランプ付き3揃い
                 hana_lamp = True
-
-                symbol = random.choice([
-                    1, 2, 3, 4, 5, 6, 8, 9
-                ])
+                
+                symbol = choose_three_match_symbol()
 
                 reels = [symbol, symbol, symbol]
 
             elif roll < three_border:
                 # 通常3揃い（777以外）
-                symbol = random.choice([
-                    1, 2, 3, 4, 5, 6, 8, 9
-                ])
-
+                
+                symbol = choose_three_match_symbol()
+                
                 reels = [symbol, symbol, symbol]
 
             elif roll < two_border:
                 # 2揃い
-                same_symbol = random.randint(1, 9)
+                
+                same_symbol = choose_two_match_symbol()
 
                 different_symbols = [
                     number

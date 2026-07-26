@@ -1796,6 +1796,80 @@ async def slot(
         ephemeral=True,
         delete_after=30
     )
+
+@bot.tree.command(
+    name="スロットランキング",
+    description="スロットの総獲得フラワーランキング",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def slot_ranking(
+    interaction: discord.Interaction
+):
+    await interaction.response.defer()
+
+    try:
+        res = await asyncio.to_thread(
+            lambda: supabase.table("slot_stats")
+            .select("user_id, total_won")
+            .order("total_won", desc=True)
+            .limit(10)
+            .execute()
+        )
+
+        if not res.data:
+            await interaction.followup.send(
+                "まだスロットランキングの記録がありません。"
+            )
+            return
+
+        medals = [
+            "🥇", "🥈", "🥉",
+            "4️⃣", "5️⃣", "6️⃣",
+            "7️⃣", "8️⃣", "9️⃣", "🔟"
+        ]
+
+        ranking_lines = []
+
+        for index, row in enumerate(res.data):
+            user_id = int(row["user_id"])
+            total_won = int(row["total_won"])
+
+            member = interaction.guild.get_member(user_id)
+
+            if member:
+                display_name = member.display_name
+            else:
+                display_name = f"ユーザー不明（{user_id}）"
+
+            ranking_lines.append(
+                f"{medals[index]} **{display_name}**\n"
+                f"　{total_won:,}フラワー"
+            )
+
+        embed = discord.Embed(
+            title="🏆 スロット総獲得ランキング",
+            description="\n\n".join(ranking_lines),
+            color=discord.Color.gold()
+        )
+
+        embed.set_footer(
+            text="スロットで獲得した配当の累計"
+        )
+
+        await interaction.followup.send(
+            embed=embed
+        )
+
+    except Exception as e:
+        print(
+            "SLOT RANKING ERROR:",
+            repr(e),
+            flush=True
+        )
+
+        await interaction.followup.send(
+            "ランキング取得中にエラーが発生しました。"
+        )
     
 class ProfileModal(Modal):
 

@@ -448,15 +448,18 @@ def judge_slot_result(
 
         # 倍率分の賞金
         prize = int(bet * multiplier)
-        
+
         if hana_lamp:
             prize *= 5
+
+        # 3揃い固定ボーナス
+        three_match_bonus = 200
 
         # 掛け金半額返却
         cashback = bet // 2
 
-        # 賞金＋掛け金半額返却
-        payout = prize + cashback
+        # 最終配当
+        payout = prize + three_match_bonus + cashback
 
         if hana_lamp:
             result_text = (
@@ -464,12 +467,14 @@ def judge_slot_result(
                 f"🌸 花ランプ：5倍\n"
                 f"最終倍率：{multiplier * 5:g}倍\n"
                 f"賞金：{prize:,}フラワー\n"
+                f"3揃いボーナス：+{three_match_bonus:,}フラワー\n"
                 f"掛け金返却：{cashback:,}フラワー"
             )
         else:
             result_text = (
                 f"{first}が3つ揃い・{multiplier:g}倍\n"
                 f"賞金：{prize:,}フラワー\n"
+                f"3揃いボーナス：+{three_match_bonus:,}フラワー\n"
                 f"掛け金返却：{cashback:,}フラワー"
             )
 
@@ -477,6 +482,7 @@ def judge_slot_result(
             "type": "three",
             "payout": payout,
             "prize": prize,
+            "bonus": three_match_bonus,
             "cashback": cashback,
             "text": result_text
         }
@@ -609,9 +615,9 @@ class BetModal(discord.ui.Modal, title="BET金額を変更"):
         try:
             value = int(self.bet.value)
 
-            if value < 100:
+            if value < 10:
                 await interaction.response.send_message(
-                    "100フラワー以上で入力してください。",
+                    "BETは10フラワー以上にしてください。",
                     ephemeral=True
                 )
                 return
@@ -1078,7 +1084,7 @@ class SlotInfoView(discord.ui.View):
         return True
 
     @discord.ui.button(
-        label="1,500フラワーで購入",
+        label="1000フラワーで購入",
         style=discord.ButtonStyle.green
     )
     async def purchase_info(
@@ -1748,14 +1754,14 @@ async def slot(
     interaction: discord.Interaction,
     bet: int
 ):
-    if bet <= 0:
+    if bet < 10:
         await interaction.response.send_message(
-            "BET額は1以上にしてください。",
+            "BET額は10以上にしてください。",
             ephemeral=True,
             delete_after=30
         )
         return
-
+        
     select_view = SlotMachineSelectView(
         owner_id=interaction.user.id,
         bet=bet,

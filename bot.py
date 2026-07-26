@@ -897,6 +897,28 @@ class SlotMachineView(discord.ui.View):
             final_flower = after_bet + payout
             profit = payout - self.bet
 
+            stats_res = await asyncio.to_thread(
+                lambda: supabase.table("slot_stats")
+                .select("total_won")
+                .eq("user_id", interaction.user.id)
+                .limit(1)
+                .execute()
+            )
+
+            current_total = (
+                int(stats_res.data[0]["total_won"])
+                if stats_res.data
+                else 0
+            )
+
+            await asyncio.to_thread(
+                lambda: supabase.table("slot_stats").upsert({
+                    "user_id": interaction.user.id,
+                    "total_won": current_total + payout,
+                    "updated_at": str(get_today())
+                }).execute()
+            )            
+
             supabase.table("coins").upsert({
                 "user_id": interaction.user.id,
                 "coins": final_flower,
